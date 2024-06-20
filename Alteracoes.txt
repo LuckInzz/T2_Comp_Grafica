@@ -1,0 +1,13 @@
+Arquivos:
+	Makefile:
+		- Adicionado os arquivos cpp em FONTES
+		- Modificado o caminho do include de "-Iinclude" para "-Iinclude\GL"
+		- Modificado o caminho de lib de "-Llib\GL\x64" para "-Llib"
+		- Modificado a variavel e compilador de "gcc" para "g++"
+	
+	Temporizador.h:
+		- Modificado o include "<sys/time.h>" para " "sys/time.h" " (Pelo que pesquisei, essa biblioteca não existe no windows.
+									    Achei uma implementação que funcionou: https://www.codefull.net/2015/12/systime-h-replacement-for-windows/)
+
+Pastas:
+	- Adicionado a pasta "sys" para o Temporizador
