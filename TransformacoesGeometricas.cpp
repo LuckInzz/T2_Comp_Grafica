@@ -11,10 +11,12 @@
 #define PAREDE1 1
 #define PAREDE2 2
 #define CHAO 0
-#define POS_INICIAL_PLAYER 3
+#define JANELA 3
+#define PORTA 4
+#define POS_INICIAL_PLAYER 9
 
-#define WALL_HEIGHT 2.70f
-#define WALL_THICKNESS 0.25f
+#define WALL_HEIGHT 2.7
+#define WALL_THICKNESS 1 // 0.25
 
 #include <iostream>
 #include <cmath>
@@ -66,13 +68,19 @@ Instancia Personagens[10];
 
 double nFrames = 0;
 double TempoTotal = 0;
-Ponto CantoEsquerdo = Ponto(-20, 0, -10);
+Ponto CantoEsquerdo = Ponto(0, 0, 0);
 Ponto OBS;
 Ponto ALVO;
 Ponto VetorAlvo;
 
 vector<vector<int>> labirinto;
 int linhas, colunas;
+float posAlvoX = 48.0f, posAlvoY = 1.0f, posAlvoZ = 48.0f; // Posição inicial do personagem
+float anguloDoPersonagem = 0.0f;
+int ModoDeCamera = 0;
+float anguloDaCamera = 0.0f;
+float cameraDist1 = 0.1f;  // Distância da câmera do personagem em 1º pessoa
+float cameraDist3 = 10.0f; // Distância da câmera do personagem em 3º pessoa
 
 // **********************************************************************
 //  void init(void)
@@ -95,8 +103,8 @@ void init(void)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     else
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    OBS = Ponto(ALVO.x, ALVO.y + 0.5, ALVO.z + 10); // Posição inicial da camera
-    ALVO = Ponto(0, 0, 0);                          // Posição inicial do personagem
+    ALVO = Ponto(posAlvoX, posAlvoY, posAlvoZ); // Posição inicial do personagem
+    OBS = Ponto(ALVO.x, ALVO.y, ALVO.z + 10);   // Posição inicial da camera
     VetorAlvo = ALVO - OBS;
 }
 
@@ -156,13 +164,13 @@ void drawLabirinto()
         for (int j = 0; j < colunas; ++j)
         {
             glPushMatrix();
-            glTranslatef(CantoEsquerdo.x + j, 0, CantoEsquerdo.z + i);
+            glTranslatef(CantoEsquerdo.x + j, CantoEsquerdo.y + 1, CantoEsquerdo.z + i);
             switch (labirinto[i][j])
             {
             case PAREDE1:
                 glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
                 glPushMatrix();
-                glScalef(1.0f, WALL_HEIGHT, WALL_THICKNESS);
+                glScaled(1, WALL_HEIGHT, WALL_THICKNESS);
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
@@ -170,16 +178,41 @@ void drawLabirinto()
                 glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
                 glPushMatrix();
                 glRotatef(90, 0, 0.1, 0);
-                glScalef(1.0f, WALL_HEIGHT, WALL_THICKNESS);
+                glScaled(1, WALL_HEIGHT, WALL_THICKNESS);
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
-            case CHAO:
-                DesenhaLadrilho(DarkBrown, DarkBrown);
+                // case CHAO:
+                // DesenhaLadrilho(DarkBrown, DarkBrown);
+                // break;
+            case JANELA:
+                // Parte inferior da janela
+                glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
+                glPushMatrix();
+                glTranslated(0, -WALL_HEIGHT / 3, 0);         // Translação para a parte inferior
+                glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS); // Escalamento para 1/3 da altura da parede
+                glutSolidCube(1.0);
+                glPopMatrix();
+
+                // Parte superior da janela
+                glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
+                glPushMatrix();
+                glTranslated(0, WALL_HEIGHT / 3, 0);          // Translação para a parte superior
+                glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS); // Escalamento para 1/3 da altura da parede
+                glutSolidCube(1.0);
+                glPopMatrix();
                 break;
-            case POS_INICIAL_PLAYER:
-                DesenhaLadrilho(Green, Green);
+            case PORTA:
+                glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
+                glPushMatrix();
+                glTranslated(0, 1.05, 0);
+                glScaled(1, 0.6, WALL_THICKNESS);
+                glutSolidCube(1.0);
+                glPopMatrix();
                 break;
+            // case POS_INICIAL_PLAYER:
+            // DesenhaLadrilho(Green, Green);
+            // break;
             // Adicione mais cases para outros tipos de células
             default:
                 break;
@@ -189,7 +222,7 @@ void drawLabirinto()
     }
 }
 
-void criaPersonagem()
+/*void criaPersonagem()
 {
     Personagens[0].Posicao = ALVO;
     Personagens[0].Escala = Ponto(1, 1);
@@ -200,16 +233,49 @@ void criaPersonagem()
     Personagens[0].Direcao = Ponto(0, 1); // direcao do movimento para cima
     Personagens[0].Direcao.rotacionaZ(0); // direcao alterada para a direita
     Personagens[0].Velocidade = 7;        // move-se a 7 m/s
+}*/
+
+void desenhaSeta()
+{
+    glBegin(GL_TRIANGLES);
+    // Cabeça da seta
+    glColor3f(1.0f, 0.0f, 0.0f); // Vermelho
+    glVertex3f(0.0f, 0.0f, 1.5f);
+    glVertex3f(0.2f, 0.0f, 0.5f);
+    glVertex3f(-0.2f, 0.0f, 0.5f);
+    glEnd();
+
+    glBegin(GL_QUADS);
+    // Haste da seta
+    glColor3f(0.8f, 0.0f, 0.0f); // Vermelho escuro
+    glVertex3f(0.05f, 0.0f, 0.5f);
+    glVertex3f(-0.05f, 0.0f, 0.5f);
+    glVertex3f(-0.05f, 0.0f, -0.5f);
+    glVertex3f(0.05f, 0.0f, -0.5f);
+    glEnd();
 }
 
 void desenhaPersonagem()
 {
     glPushMatrix();
-    glTranslatef(ALVO.x, ALVO.y, ALVO.z);
-    //  glRotatef(angulo,0,1,0);
+    glTranslatef(ALVO.x, ALVO.y - 1, ALVO.z);
+    // Aplicar a rotação do personagem em torno do eixo Y
+    glRotatef(anguloDoPersonagem, 0.0f, 1.0f, 0.0f);
+
+    // Desenhar o personagem
     glColor3f(0.5f, 0.0f, 0.5f); // Roxo
-    glScaled(0.5, 1, 0.5);
+    glScaled(0.4, 1.2, 0.4);
     glutSolidCube(2);
+
+    // Voltar para escala original e desenhar a seta
+    glPopMatrix();
+
+    glPushMatrix();
+    glTranslatef(ALVO.x, ALVO.y - 1, ALVO.z - 0.1);
+    glRotatef(anguloDoPersonagem + 180, 0.0f, 1.0f, 0.0f);
+
+    // Desenhar a seta
+    desenhaSeta();
     glPopMatrix();
 }
 
@@ -297,6 +363,15 @@ void DesenhaLadrilho(int corBorda, int corDentro)
     glEnd();
 }
 
+void DesenhaChaoV2()
+{
+    glColor3f(0.4f, 0.2f, 0.1f); // Marrom escuro
+    glPushMatrix();
+    glScaled(1, 1, 1);
+    glutSolidCube(1.0);
+    glPopMatrix();
+}
+
 // **********************************************************************
 //
 //
@@ -311,7 +386,7 @@ void DesenhaPiso()
         glPushMatrix();
         for (int z = 0; z < colunas; z++)
         {
-            DesenhaLadrilho(DarkBrown, DarkBrown);
+            DesenhaChaoV2();
             glTranslated(0, 0, 1);
         }
         glPopMatrix();
@@ -401,27 +476,69 @@ void MygluPerspective(float fieldOfView, float aspect, float zNear, float zFar)
 // **********************************************************************
 void PosicUser()
 {
-
-    // Define os par�metros da proje��o Perspectiva
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    // Define o volume de visualiza��o sempre a partir da posicao do
-    // observador
+
+    // Defina a projeção dependendo do modo de câmera
     if (ModoDeProjecao == 0)
-        glOrtho(-10, 10, -10, 10, 0, 20); // Projecao paralela Orthografica
+    {
+        glOrtho(-10, 10, -10, 10, 0, 20); // Projeção paralela Orthográfica
+    }
     else
-        MygluPerspective(60, AspectRatio, 0.1, 50); // Projecao perspectiva
+    {
+        MygluPerspective(60, AspectRatio, 0.1, 50); // Projeção perspectiva
+    }
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    float cameraD = cameraDist1; // Distância da câmera para primeira pessoa
 
-    gluLookAt(OBS.x, OBS.y, OBS.z,    // Posi��o do Observador
-              ALVO.x, ALVO.y, ALVO.z, // Posi��o do Alvo
-              0.0, 1.0, 0.0);
+    if (ModoDeCamera == 0)
+    {
+        cameraD = cameraDist1;
+        OBS.x = posAlvoX;
+        OBS.z = posAlvoZ;
+        OBS.y = posAlvoY;
+    }
+    else if (ModoDeCamera == 1)
+    {
+        cameraD = cameraDist3; // Distância da câmera para terceira pessoa
+    }
+    else if (ModoDeCamera == 2)
+    {
+        // Defina a câmera acima do mapa
+        OBS.x = posAlvoX;
+        OBS.z = posAlvoZ;
+        OBS.y = posAlvoY + 25;
+
+        ALVO.x = posAlvoX;
+        ALVO.y = posAlvoY;
+        ALVO.z = posAlvoZ;
+
+        gluLookAt(OBS.x, OBS.y, OBS.z,    // Posição do Observador
+                  ALVO.x, ALVO.y, ALVO.z, // Posição do Alvo
+                  0.0, 0.0, -1.0);        // Vetor Up
+
+        return; // Retorna pois não há necessidade de seguir com o restante da função
+    }
+
+    // Cálculo da posição e orientação da câmera
+    OBS.x = posAlvoX - cameraD * sin(anguloDaCamera * M_PI / 180.0f);
+    OBS.z = posAlvoZ + cameraD * cos(anguloDaCamera * M_PI / 180.0f);
+
+    ALVO.x = posAlvoX;
+    ALVO.y = posAlvoY;
+    ALVO.z = posAlvoZ;
+
+    gluLookAt(OBS.x, OBS.y, OBS.z,    // Posição do Observador
+              ALVO.x, ALVO.y, ALVO.z, // Posição do Alvo
+              0.0, 1.0, 0.0);         // Vetor Up
+
+    // Atualizar o ângulo do personagem para igualar ao da câmera
+    // anguloDoPersonagem = anguloDaCamera;
 }
+
 // **********************************************************************
 //  void reshape( int w, int h )
 //		trata o redimensionamento da janela OpenGL
@@ -456,15 +573,15 @@ void display(void)
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    DefineLuz();
+    // DefineLuz();
 
     PosicUser();
 
     glMatrixMode(GL_MODELVIEW);
 
-    // DesenhaChao();
+    DesenhaPiso();
     drawLabirinto();
-    criaPersonagem();
+    // criaPersonagem();
     desenhaPersonagem();
 
     /*glPushMatrix();
@@ -488,14 +605,18 @@ void display(void)
 // **********************************************************************
 void keyboard(unsigned char key, int x, int y)
 {
+    float stepSize = 1.0f;
+    float angleStep = 5.0f;
+
     switch (key)
     {
     case 27:     // Termina o programa qdo
         exit(0); // a tecla ESC for pressionada
         break;
     case 'p':
-        ModoDeProjecao = !ModoDeProjecao;
-        glutPostRedisplay();
+        ModoDeCamera++;
+        if (ModoDeCamera > 2)
+            ModoDeCamera = 0;
         break;
     case 'e':
         ModoDeExibicao = !ModoDeExibicao;
@@ -503,20 +624,20 @@ void keyboard(unsigned char key, int x, int y)
         glutPostRedisplay();
         break;
     case 'w': // Andar para frente
-        ALVO.z--;
-        OBS.z--;
+        posAlvoX += stepSize * sin(anguloDaCamera * M_PI / 180.0f);
+        posAlvoZ -= stepSize * cos(anguloDaCamera * M_PI / 180.0f);
         break;
     case 's': // Andar para trás
-        ALVO.z++;
-        OBS.z++;
+        posAlvoX -= stepSize * sin(anguloDaCamera * M_PI / 180.0f);
+        posAlvoZ += stepSize * cos(anguloDaCamera * M_PI / 180.0f);
         break;
     case 'a': // Andar para esquerda
-        ALVO.x--;
-        OBS.x--;
+        anguloDaCamera -= angleStep;
+        anguloDoPersonagem += angleStep;
         break;
     case 'd': // Andar para direita
-        ALVO.x++;
-        OBS.x++;
+        anguloDaCamera += angleStep;
+        anguloDoPersonagem -= angleStep;
         break;
     default:
         cout << key;
@@ -540,18 +661,9 @@ void arrow_keys(int a_keys, int x, int y)
         glutInitWindowPosition(0, 0);
         glutInitWindowSize(700, 700);
         break;
-    case GLUT_KEY_LEFT:
-        // ALVO.rotacionaY(-10);
-        OBS.rotacionaY(-10);
-        break;
-    case GLUT_KEY_RIGHT:
-        // ALVO.rotacionaY(10);
-        OBS.rotacionaY(10);
-        break;
         // case GLUT_KEY_RIGHT: // When Up Arrow Is Pressed...
         //  PosicaoLuz0[0]++; // Go Into Full Screen Mode
         // break;
-
     default:
         break;
     }
