@@ -44,6 +44,8 @@ using namespace std;
 #include "Ponto.h"
 #include "Instancia.h"
 
+// #include "TextureClass.h"
+
 void desenhaPersonagem();
 void DesenhaLadrilho(int corB, int corD);
 
@@ -82,6 +84,110 @@ float anguloDaCamera = 0.0f;
 float cameraDist1 = 0.1f;  // Distância da câmera do personagem em 1º pessoa
 float cameraDist3 = 10.0f; // Distância da câmera do personagem em 3º pessoa
 
+GLuint TEX1, TEX2;
+
+// Caixa para detectar colisão
+struct BoundingBox
+{
+    Ponto min;
+    Ponto max;
+};
+
+typedef struct // Struct para armazenar um ponto
+{
+    float X, Y, Z;
+    void Set(float x, float y, float z)
+    {
+        X = x;
+        Y = y;
+        Z = z;
+    }
+} TPoint;
+
+typedef struct // Struct para armazenar um triângulo
+{
+    TPoint P1, P2, P3;
+} TTriangle;
+
+class Objeto3D
+{
+    TTriangle *faces;    // vetor de faces
+    unsigned int nFaces; // Variavel que armazena o numero de faces do objeto
+public:
+    Objeto3D()
+    {
+        nFaces = 0;
+        faces = NULL;
+    }
+    unsigned int getNFaces()
+    {
+        return nFaces;
+    }
+
+    // Método para ler um arquivo .tri e carregar o objeto 3D
+    void LeObjeto(const char *Nome)
+    {
+        ifstream arquivo(Nome);
+        if (!arquivo)
+        {
+            cerr << "Erro ao abrir o arquivo " << Nome << endl;
+            exit(1);
+        }
+
+        arquivo >> nFaces; // Lê o número de triângulos
+
+        // Aloca memória para os triângulos
+        faces = new TTriangle[nFaces];
+
+        unsigned int numTriangulo;
+        float x, y, z, nx, ny, nz;
+        for (unsigned int i = 0; i < nFaces; ++i)
+        {
+            arquivo >> numTriangulo; // Lê o número do triângulo (ignorando neste código)
+
+            // Lê os vértices do triângulo
+            arquivo >> x >> y >> z >> nx >> ny >> nz;
+            faces[i].P1.Set(x, y, z);
+
+            arquivo >> x >> y >> z >> nx >> ny >> nz;
+            faces[i].P2.Set(x, y, z);
+
+            arquivo >> x >> y >> z >> nx >> ny >> nz;
+            faces[i].P3.Set(x, y, z);
+        }
+
+        arquivo.close();
+    }
+
+    // Método para exibir o objeto 3D usando OpenGL
+    void ExibeObjeto()
+    {
+        glBegin(GL_TRIANGLES);
+        for (unsigned int i = 0; i < nFaces; ++i)
+        {
+            glVertex3f(faces[i].P1.X, faces[i].P1.Y, faces[i].P1.Z);
+            glVertex3f(faces[i].P2.X, faces[i].P2.Y, faces[i].P2.Z);
+            glVertex3f(faces[i].P3.X, faces[i].P3.Y, faces[i].P3.Z);
+        }
+        glEnd();
+    }
+
+    // Método para liberar memória alocada
+    ~Objeto3D()
+    {
+        if (faces != NULL)
+            delete[] faces;
+    }
+};
+
+Objeto3D objeto3D;
+
+/*void initTexture(void)
+{
+    TEX1 = LoadTexture("Piso.jpg");
+    TEX2 = LoadTexture("Parede.png");
+}*/
+
 // **********************************************************************
 //  void init(void)
 //        Inicializa os parametros globais de OpenGL
@@ -95,6 +201,7 @@ void init(void)
     // glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glEnable(GL_NORMALIZE);
+    glEnable(GL_TEXTURE_2D); // Habilita textura
     // glShadeModel(GL_SMOOTH);
     glShadeModel(GL_FLAT);
 
@@ -103,9 +210,11 @@ void init(void)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     else
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
     ALVO = Ponto(posAlvoX, posAlvoY, posAlvoZ); // Posição inicial do personagem
     OBS = Ponto(ALVO.x, ALVO.y, ALVO.z + 10);   // Posição inicial da camera
     VetorAlvo = ALVO - OBS;
+    // initTexture();
 }
 
 // **********************************************************************
@@ -133,6 +242,59 @@ void animate()
         TempoTotal = 0;
         nFrames = 0;
     }
+}
+
+BoundingBox getBoundingBox(Ponto pos, float width, float height, float depth)
+{
+    BoundingBox box;
+    box.min = Ponto(pos.x - width / 2, pos.y - height / 2, pos.z - depth / 2);
+    box.max = Ponto(pos.x + width / 2, pos.y + height / 2, pos.z + depth / 2);
+    return box;
+}
+
+bool detectCollision(BoundingBox a, BoundingBox b)
+{
+    return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
+           (a.min.y <= b.max.y && a.max.y >= b.min.y) &&
+           (a.min.z <= b.max.z && a.max.z >= b.min.z);
+}
+
+bool detectaColisao3D(Ponto personagemPos)
+{
+    float personagemWidth = 0.4;
+    float personagemHeight = 1.2;
+    float personagemDepth = 0.4;
+
+    BoundingBox personagemBox = getBoundingBox(personagemPos, personagemWidth, personagemHeight, personagemDepth);
+
+    for (int i = 0; i < linhas; ++i)
+    {
+        for (int j = 0; j < colunas; ++j)
+        {
+            if (labirinto[i][j] == PAREDE1 || labirinto[i][j] == PAREDE2)
+            {
+                Ponto paredePos = Ponto(CantoEsquerdo.x + j, CantoEsquerdo.y + 1, CantoEsquerdo.z + i);
+                float paredeWidth = 1.0;
+                float paredeHeight = WALL_HEIGHT;
+                float paredeDepth = WALL_THICKNESS;
+
+                if (labirinto[i][j] == PAREDE2)
+                {
+                    paredeDepth = 1.0;
+                    paredeWidth = WALL_THICKNESS;
+                }
+
+                BoundingBox paredeBox = getBoundingBox(paredePos, paredeWidth, paredeHeight, paredeDepth);
+
+                if (detectCollision(personagemBox, paredeBox))
+                {
+                    cout << "PERSONAGEM BATEU NA PAREDE!" << endl;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 void readMap(const char *filename)
@@ -171,6 +333,7 @@ void drawLabirinto()
                 glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
                 glPushMatrix();
                 glScaled(1, WALL_HEIGHT, WALL_THICKNESS);
+                // glBindTexture(GL_TEXTURE_2D, TEX2);
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
@@ -179,6 +342,7 @@ void drawLabirinto()
                 glPushMatrix();
                 glRotatef(90, 0, 0.1, 0);
                 glScaled(1, WALL_HEIGHT, WALL_THICKNESS);
+                // glBindTexture(GL_TEXTURE_2D, TEX2);
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
@@ -191,6 +355,7 @@ void drawLabirinto()
                 glPushMatrix();
                 glTranslated(0, -WALL_HEIGHT / 3, 0);         // Translação para a parte inferior
                 glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS); // Escalamento para 1/3 da altura da parede
+                // glBindTexture(GL_TEXTURE_2D, TEX2);
                 glutSolidCube(1.0);
                 glPopMatrix();
 
@@ -199,6 +364,7 @@ void drawLabirinto()
                 glPushMatrix();
                 glTranslated(0, WALL_HEIGHT / 3, 0);          // Translação para a parte superior
                 glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS); // Escalamento para 1/3 da altura da parede
+                // glBindTexture(GL_TEXTURE_2D, TEX2);
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
@@ -207,6 +373,7 @@ void drawLabirinto()
                 glPushMatrix();
                 glTranslated(0, 1.05, 0);
                 glScaled(1, 0.6, WALL_THICKNESS);
+                // glBindTexture(GL_TEXTURE_2D, TEX2);
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
@@ -368,6 +535,7 @@ void DesenhaChaoV2()
     glColor3f(0.4f, 0.2f, 0.1f); // Marrom escuro
     glPushMatrix();
     glScaled(1, 1, 1);
+    // glBindTexture(GL_TEXTURE_2D, TEX2);
     glutSolidCube(1.0);
     glPopMatrix();
 }
@@ -584,6 +752,15 @@ void display(void)
     // criaPersonagem();
     desenhaPersonagem();
 
+    // Exibicao do objeto lido de arquivo
+    glPushMatrix();
+    glTranslatef(20.0f, 0.5f, 20.0f);
+    glScalef(0.005f, 0.005f, 0.005f);
+    // glRotatef(65,0,0,1);
+    glColor3f(0.0f, 0.0f, 0.0f);
+    objeto3D.ExibeObjeto();
+    glPopMatrix();
+
     /*glPushMatrix();
     glTranslatef(-4.0f, 1.0f, 0.0f);
     glRotatef(angulo, 0, 1, 0);
@@ -607,6 +784,7 @@ void keyboard(unsigned char key, int x, int y)
 {
     float stepSize = 1.0f;
     float angleStep = 5.0f;
+    Ponto novaPosicao = Ponto(posAlvoX, posAlvoY, posAlvoZ);
 
     switch (key)
     {
@@ -623,13 +801,13 @@ void keyboard(unsigned char key, int x, int y)
         init();
         glutPostRedisplay();
         break;
-    case 'w': // Andar para frente
-        posAlvoX += stepSize * sin(anguloDaCamera * M_PI / 180.0f);
-        posAlvoZ -= stepSize * cos(anguloDaCamera * M_PI / 180.0f);
+    case 'w':
+        novaPosicao.x += stepSize * sin(anguloDaCamera * M_PI / 180.0f);
+        novaPosicao.z -= stepSize * cos(anguloDaCamera * M_PI / 180.0f);
         break;
-    case 's': // Andar para trás
-        posAlvoX -= stepSize * sin(anguloDaCamera * M_PI / 180.0f);
-        posAlvoZ += stepSize * cos(anguloDaCamera * M_PI / 180.0f);
+    case 's':
+        novaPosicao.x -= stepSize * sin(anguloDaCamera * M_PI / 180.0f);
+        novaPosicao.z += stepSize * cos(anguloDaCamera * M_PI / 180.0f);
         break;
     case 'a': // Andar para esquerda
         anguloDaCamera -= angleStep;
@@ -642,6 +820,12 @@ void keyboard(unsigned char key, int x, int y)
     default:
         cout << key;
         break;
+    }
+
+    if (!detectaColisao3D(novaPosicao))
+    {
+        posAlvoX = novaPosicao.x;
+        posAlvoZ = novaPosicao.z;
     }
 }
 
@@ -686,6 +870,7 @@ int main(int argc, char **argv)
     // system("pwd");
 
     readMap("MatrizMapa.txt");
+    objeto3D.LeObjeto("energy.tri");
 
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
