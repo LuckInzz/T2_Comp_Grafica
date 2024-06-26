@@ -76,7 +76,10 @@ int ModoDeProjecao = 1;
 int ModoDeExibicao = 1;
 
 Instancia Personagens[10];
-int nVidas = 0;
+int TOTAL_PONTOS = 10; // total de pontos inicial
+int TOTAL_ENERGIA = 1000; // energia inicial do jogador 
+
+
 double nFrames = 0;
 double TempoTotal = 0;
 Ponto CantoEsquerdo = Ponto(0, 0, 0);
@@ -623,6 +626,7 @@ void detectaColisaoCapsula()
             cout << "Personagem atingiu a capsula de energia" << endl;
             // Remover a cápsula da lista
             it = posicoesCapsulasEnergia.erase(it);
+            TOTAL_ENERGIA += 100;
         }
         else
         {
@@ -659,8 +663,6 @@ void moveInimigo()
         // Verificar colisão com paredes
         if (!isPositionValid(it->x, it->z))
         {
-            // Implementar lógica de ajuste de movimento ou parada
-            // Por exemplo, voltar à posição anterior
             it->x -= dirX * velocidadeInimigo;
             it->z -= dirZ * velocidadeInimigo;
         }
@@ -671,18 +673,27 @@ void moveInimigo()
 
         if (detectCollision(inimigoBox, personagemBox))
         {
-            // Implementar ação de colisão com o personagem
-            cout << "O inimigo colidiu com o personagem!" << endl;
-            nVidas--;
+            TOTAL_PONTOS--;
+            cout << "O inimigo colidiu com o personagem! Total de pontos atualizado: " << TOTAL_PONTOS << endl;
 
             // Remover o inimigo da lista
             it = posicoesInimigos.erase(it);
+
+            if (TOTAL_PONTOS == 0 || TOTAL_ENERGIA == 0) exit(0);
         }
         else
         {
             ++it; // Avançar para o próximo inimigo se não houve colisão
         }
     }
+}
+
+boolean acabouEnergia()
+{
+    if (TOTAL_ENERGIA == 0) 
+        return true;
+
+    return false;
 }
 
 // **********************************************************************
@@ -975,6 +986,83 @@ void reshape(int w, int h)
 // **********************************************************************
 float PosicaoZ = -30;
 
+void renderText(float x, float y, void *font, std::string text) {
+    glRasterPos2f(x, y);
+    for (char c : text) {
+        glutBitmapCharacter(font, c);
+    }
+}
+
+void displayGameOver()
+{
+    glColor3f(1.0f, 1.0f, 1.0f); // Cor do texto (branco)
+    
+    // Salvar o estado atual da matriz de projeção
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    
+    // Definir projeção ortogonal
+    gluOrtho2D(0, glutGet(GLUT_WINDOW_WIDTH), 0, glutGet(GLUT_WINDOW_HEIGHT));
+    
+    // Salvar o estado atual da matriz de modelo
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    // Converta o número de vidas para uma string
+    std::string infoStr = "GAME OVER! A energia do jogador acabou!";
+
+    // Renderize o texto na posição escolhida
+    renderText(10, glutGet(GLUT_WINDOW_HEIGHT) - 20, GLUT_BITMAP_HELVETICA_18, infoStr);
+
+    // Restaurar o estado anterior da matriz de modelo
+    glPopMatrix();
+    
+    // Restaurar o estado anterior da matriz de projeção
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    
+    // Voltar para a matriz de modelo
+    glMatrixMode(GL_MODELVIEW);
+ 
+}
+
+void displayInfo() 
+{
+    glColor3f(1.0f, 1.0f, 1.0f); // Cor do texto (branco)
+    
+    // Salvar o estado atual da matriz de projeção
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    
+    // Definir projeção ortogonal
+    gluOrtho2D(0, glutGet(GLUT_WINDOW_WIDTH), 0, glutGet(GLUT_WINDOW_HEIGHT));
+    
+    // Salvar o estado atual da matriz de modelo
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    // Converta o número de vidas para uma string
+    std::string infoStr = "Pontos: " + std::to_string(TOTAL_PONTOS) + ", Energia: " + std::to_string(TOTAL_ENERGIA);
+
+    // Renderize o texto na posição escolhida
+    renderText(10, glutGet(GLUT_WINDOW_HEIGHT) - 20, GLUT_BITMAP_HELVETICA_18, infoStr);
+
+    // Restaurar o estado anterior da matriz de modelo
+    glPopMatrix();
+    
+    // Restaurar o estado anterior da matriz de projeção
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    
+    // Voltar para a matriz de modelo
+    glMatrixMode(GL_MODELVIEW);
+}
+
+
 void display(void)
 {
 
@@ -993,7 +1081,12 @@ void display(void)
     desenhaInimigo();
     moveInimigo();
     detectaColisaoCapsula();
+    displayInfo(); 
 
+    if (acabouEnergia()) {
+        displayGameOver();
+        exit(0);
+    }
     /*glPushMatrix();
     glTranslatef(-4.0f, 1.0f, 0.0f);
     glRotatef(angulo, 0, 1, 0);
@@ -1037,10 +1130,12 @@ void keyboard(unsigned char key, int x, int y)
     case 'w':
         novaPosicao.x += stepSize * sin(anguloDaCamera * M_PI / 180.0f);
         novaPosicao.z -= stepSize * cos(anguloDaCamera * M_PI / 180.0f);
+        TOTAL_ENERGIA -= 5; // se mover para frente perde energia
         break;
     case 's':
         novaPosicao.x -= stepSize * sin(anguloDaCamera * M_PI / 180.0f);
         novaPosicao.z += stepSize * cos(anguloDaCamera * M_PI / 180.0f);
+        TOTAL_ENERGIA -= 5; // se mover para tràs perde energia
         break;
     case 'a': // Andar para esquerda
         anguloDaCamera -= angleStep;
