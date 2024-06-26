@@ -10,9 +10,11 @@
 
 #define PAREDE1 1
 #define PAREDE2 2
-#define CHAO 0
+#define PISO 0
 #define JANELA 3
 #define PORTA 4
+#define CADEIRA 5
+#define MESA 6
 #define POS_INICIAL_PLAYER 9
 
 #define WALL_HEIGHT 2.7
@@ -44,10 +46,17 @@ using namespace std;
 #include "Ponto.h"
 #include "Instancia.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#include <cmath> // Para M_PI
+#define PI 3.14159265358979323846
+
 // #include "TextureClass.h"
 
 void desenhaPersonagem();
 void DesenhaLadrilho(int corB, int corD);
+void initPositions();
 
 Temporizador T;
 double AccumDeltaT = 0;
@@ -67,7 +76,7 @@ int ModoDeProjecao = 1;
 int ModoDeExibicao = 1;
 
 Instancia Personagens[10];
-
+int nVidas = 0;
 double nFrames = 0;
 double TempoTotal = 0;
 Ponto CantoEsquerdo = Ponto(0, 0, 0);
@@ -79,12 +88,34 @@ vector<vector<int>> labirinto;
 int linhas, colunas;
 float posAlvoX = 48.0f, posAlvoY = 1.0f, posAlvoZ = 48.0f; // Posição inicial do personagem
 float anguloDoPersonagem = 0.0f;
+float anguloDoInimigo = 0.0f;
 int ModoDeCamera = 0;
 float anguloDaCamera = 0.0f;
 float cameraDist1 = 0.1f;  // Distância da câmera do personagem em 1º pessoa
 float cameraDist3 = 10.0f; // Distância da câmera do personagem em 3º pessoa
 
-GLuint TEX1, TEX2;
+int inimigoWidth = 1;
+int inimigoHeight = 1;
+int inimigoDepth = 1;
+
+int personagemWidth = 1;
+int personagemHeight = 1;
+int personagemDepth = 1;
+
+GLuint texParede, texPiso, texEnergy;
+
+std::vector<Ponto> posicoesInimigos;
+std::vector<Ponto> posicoesCapsulasEnergia;
+
+typedef struct // Struct para armazenar coordenadas de textura
+{
+    float U, V;
+    void Set(float u, float v)
+    {
+        U = u;
+        V = v;
+    }
+} TTexCoord;
 
 // Caixa para detectar colisão
 struct BoundingBox
@@ -107,6 +138,7 @@ typedef struct // Struct para armazenar um ponto
 typedef struct // Struct para armazenar um triângulo
 {
     TPoint P1, P2, P3;
+    TTexCoord T1, T2, T3; // Coordenadas de textura
 } TTriangle;
 
 class Objeto3D
@@ -117,9 +149,10 @@ public:
     Objeto3D()
     {
         nFaces = 0;
-        faces = NULL;
+        faces = nullptr;
     }
-    unsigned int getNFaces()
+
+    unsigned int getNFaces() const
     {
         return nFaces;
     }
@@ -127,65 +160,100 @@ public:
     // Método para ler um arquivo .tri e carregar o objeto 3D
     void LeObjeto(const char *Nome)
     {
-        ifstream arquivo(Nome);
+        std::ifstream arquivo(Nome);
         if (!arquivo)
         {
-            cerr << "Erro ao abrir o arquivo " << Nome << endl;
+            std::cerr << "Erro ao abrir o arquivo " << Nome << std::endl;
             exit(1);
         }
 
-        arquivo >> nFaces; // Lê o número de triângulos
-
-        // Aloca memória para os triângulos
-        faces = new TTriangle[nFaces];
-
-        unsigned int numTriangulo;
+        std::vector<TTriangle> tempFaces;
         float x, y, z, nx, ny, nz;
-        for (unsigned int i = 0; i < nFaces; ++i)
+        while (arquivo >> x >> y >> z >> nx >> ny >> nz)
         {
-            arquivo >> numTriangulo; // Lê o número do triângulo (ignorando neste código)
-
-            // Lê os vértices do triângulo
-            arquivo >> x >> y >> z >> nx >> ny >> nz;
-            faces[i].P1.Set(x, y, z);
+            TTriangle tri;
+            tri.P1.Set(x, y, z);
+            tri.T1.Set(0.0f, 0.0f); // Adiciona coordenadas de textura padrão
 
             arquivo >> x >> y >> z >> nx >> ny >> nz;
-            faces[i].P2.Set(x, y, z);
+            tri.P2.Set(x, y, z);
+            tri.T2.Set(1.0f, 0.0f); // Adiciona coordenadas de textura padrão
 
             arquivo >> x >> y >> z >> nx >> ny >> nz;
-            faces[i].P3.Set(x, y, z);
+            tri.P3.Set(x, y, z);
+            tri.T3.Set(0.5f, 1.0f); // Adiciona coordenadas de textura padrão
+
+            tempFaces.push_back(tri);
         }
+
+        nFaces = tempFaces.size();
+        faces = new TTriangle[nFaces];
+        std::copy(tempFaces.begin(), tempFaces.end(), faces);
 
         arquivo.close();
     }
 
     // Método para exibir o objeto 3D usando OpenGL
-    void ExibeObjeto()
+    void ExibeObjeto() const
     {
+        // glBindTexture(GL_TEXTURE_2D, texParede); // Ajuste conforme a textura desejada
+        // glEnable(GL_TEXTURE_2D);
+
         glBegin(GL_TRIANGLES);
         for (unsigned int i = 0; i < nFaces; ++i)
         {
+            glTexCoord2f(faces[i].T1.U, faces[i].T1.V);
             glVertex3f(faces[i].P1.X, faces[i].P1.Y, faces[i].P1.Z);
+
+            glTexCoord2f(faces[i].T2.U, faces[i].T2.V);
             glVertex3f(faces[i].P2.X, faces[i].P2.Y, faces[i].P2.Z);
+
+            glTexCoord2f(faces[i].T3.U, faces[i].T3.V);
             glVertex3f(faces[i].P3.X, faces[i].P3.Y, faces[i].P3.Z);
         }
         glEnd();
+
+        // glDisable(GL_TEXTURE_2D);
     }
 
     // Método para liberar memória alocada
     ~Objeto3D()
     {
-        if (faces != NULL)
-            delete[] faces;
+        delete[] faces;
     }
 };
 
-Objeto3D objeto3D;
+Objeto3D capsulaEnergia, cadeira, mesa, estatua, inimigo, personagem;
+
+/*void CarregaTextura(const char *nomeArquivo, GLuint &textureID)
+{
+    int largura, altura, canais;
+    unsigned char *data = stbi_load(nomeArquivo, &largura, &altura, &canais, 0);
+    if (!data)
+    {
+        std::cerr << "Erro ao carregar a textura " << nomeArquivo << std::endl;
+        exit(1);
+    }
+
+    std::cout << "Textura " << nomeArquivo << " carregada com sucesso." << std::endl;
+
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, largura, altura, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    stbi_image_free(data);
+}*/
 
 /*void initTexture(void)
 {
-    TEX1 = LoadTexture("Piso.jpg");
-    TEX2 = LoadTexture("Parede.png");
+    texParede = LoadTexture("Piso.jpg");
+    texPiso = LoadTexture("Parede.png");
 }*/
 
 // **********************************************************************
@@ -259,12 +327,8 @@ bool detectCollision(BoundingBox a, BoundingBox b)
            (a.min.z <= b.max.z && a.max.z >= b.min.z);
 }
 
-bool detectaColisao3D(Ponto personagemPos)
+bool detectaColisaoParede(Ponto personagemPos)
 {
-    float personagemWidth = 0.4;
-    float personagemHeight = 1.2;
-    float personagemDepth = 0.4;
-
     BoundingBox personagemBox = getBoundingBox(personagemPos, personagemWidth, personagemHeight, personagemDepth);
 
     for (int i = 0; i < linhas; ++i)
@@ -333,7 +397,7 @@ void drawLabirinto()
                 glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
                 glPushMatrix();
                 glScaled(1, WALL_HEIGHT, WALL_THICKNESS);
-                // glBindTexture(GL_TEXTURE_2D, TEX2);
+                // glBindTexture(GL_TEXTURE_2D, texPiso);
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
@@ -342,11 +406,11 @@ void drawLabirinto()
                 glPushMatrix();
                 glRotatef(90, 0, 0.1, 0);
                 glScaled(1, WALL_HEIGHT, WALL_THICKNESS);
-                // glBindTexture(GL_TEXTURE_2D, TEX2);
+                // glBindTexture(GL_TEXTURE_2D, texPiso);
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
-                // case CHAO:
+                // case PISO:
                 // DesenhaLadrilho(DarkBrown, DarkBrown);
                 // break;
             case JANELA:
@@ -355,7 +419,7 @@ void drawLabirinto()
                 glPushMatrix();
                 glTranslated(0, -WALL_HEIGHT / 3, 0);         // Translação para a parte inferior
                 glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS); // Escalamento para 1/3 da altura da parede
-                // glBindTexture(GL_TEXTURE_2D, TEX2);
+                // glBindTexture(GL_TEXTURE_2D, texPiso);
                 glutSolidCube(1.0);
                 glPopMatrix();
 
@@ -364,7 +428,7 @@ void drawLabirinto()
                 glPushMatrix();
                 glTranslated(0, WALL_HEIGHT / 3, 0);          // Translação para a parte superior
                 glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS); // Escalamento para 1/3 da altura da parede
-                // glBindTexture(GL_TEXTURE_2D, TEX2);
+                // glBindTexture(GL_TEXTURE_2D, texPiso);
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
@@ -373,8 +437,24 @@ void drawLabirinto()
                 glPushMatrix();
                 glTranslated(0, 1.05, 0);
                 glScaled(1, 0.6, WALL_THICKNESS);
-                // glBindTexture(GL_TEXTURE_2D, TEX2);
+                // glBindTexture(GL_TEXTURE_2D, texPiso);
                 glutSolidCube(1.0);
+                glPopMatrix();
+                break;
+            case CADEIRA:
+                glPushMatrix();
+                glTranslated(0, -0.9, 0);
+                glScalef(0.003f, 0.003f, 0.003f);
+                glColor3f(0.8f, 0.6f, 0.4f);
+                cadeira.ExibeObjeto();
+                glPopMatrix();
+                break;
+            case MESA:
+                glPushMatrix();
+                glTranslated(0, -0.9, 0);
+                glScalef(0.7f, 0.7f, 0.7f);
+                glColor3f(0.8f, 0.6f, 0.4f); // marrom claro
+                mesa.ExibeObjeto();
                 glPopMatrix();
                 break;
             // case POS_INICIAL_PLAYER:
@@ -389,18 +469,74 @@ void drawLabirinto()
     }
 }
 
-/*void criaPersonagem()
+bool isPositionValid(int x, int z, float minDistance = 5.0f)
 {
-    Personagens[0].Posicao = ALVO;
-    Personagens[0].Escala = Ponto(1, 1);
-    Personagens[0].Rotacao = 0;
-    Personagens[0].IdDoModelo = 0;
-    Personagens[0].modelo = desenhaPersonagem;
-    Personagens[0].Pivot = Ponto(2.5, 0);
-    Personagens[0].Direcao = Ponto(0, 1); // direcao do movimento para cima
-    Personagens[0].Direcao.rotacionaZ(0); // direcao alterada para a direita
-    Personagens[0].Velocidade = 7;        // move-se a 7 m/s
-}*/
+    // Verifica se a posição está dentro dos limites do labirinto
+    if (x < 0 || x >= linhas || z < 0 || z >= colunas)
+    {
+        cout << "Posicao fora dos limites: x=" << x << ", z=" << z << endl;
+        return false;
+    }
+
+    if (labirinto[x][z] != PISO)
+    {
+        cout << "Posicao nao e piso: x=" << x << ", z=" << z << endl;
+        return false;
+    }
+
+    // Verifica se a posição está longe o suficiente do personagem principal
+    float dist = sqrt(pow(CantoEsquerdo.x + z - posAlvoX, 2) + pow(CantoEsquerdo.z + x - posAlvoZ, 2));
+    if (dist < minDistance)
+    {
+        // cout << "Distância mínima não atendida: dist=" << dist << ", minDistance=" << minDistance << endl;
+        return false;
+    }
+
+    return true;
+}
+
+Ponto generateRandomPosition()
+{
+    int x, z;
+    int attempts = 0;
+    int maxAttempts = 50; // Número máximo de tentativas para encontrar uma posição válida
+
+    do
+    {
+        x = rand() % linhas;
+        z = rand() % colunas;
+        attempts++;
+    } while (!isPositionValid(x, z) && attempts < maxAttempts);
+
+    if (attempts == maxAttempts)
+    {
+        cout << "Erro: Nao foi possivel encontrar uma posicao valida apos " << maxAttempts << " tentativas." << endl;
+        // Retorna uma posição padrão caso não encontre uma posição válida
+        return Ponto(CantoEsquerdo.x, CantoEsquerdo.y, CantoEsquerdo.z);
+    }
+
+    return Ponto(CantoEsquerdo.x + z, CantoEsquerdo.y + 1, CantoEsquerdo.z + x);
+}
+
+void initPositions()
+{
+    int numInimigos = 2; // Por exemplo
+    int numCapsulas = 2; // Por exemplo
+
+    for (int i = 0; i < numInimigos; i++)
+    {
+        Ponto pos = generateRandomPosition();
+        cout << "Posicao do inimigo gerada: (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << endl;
+        posicoesInimigos.push_back(pos);
+    }
+
+    for (int i = 0; i < numCapsulas; i++)
+    {
+        Ponto pos = generateRandomPosition();
+        cout << "Posicao da cápsula gerada: (" << pos.x << ", " << pos.y << ", " << pos.z << ")" << endl;
+        posicoesCapsulasEnergia.push_back(pos);
+    }
+}
 
 void desenhaSeta()
 {
@@ -428,22 +564,125 @@ void desenhaPersonagem()
     glTranslatef(ALVO.x, ALVO.y - 1, ALVO.z);
     // Aplicar a rotação do personagem em torno do eixo Y
     glRotatef(anguloDoPersonagem, 0.0f, 1.0f, 0.0f);
-
-    // Desenhar o personagem
-    glColor3f(0.5f, 0.0f, 0.5f); // Roxo
-    glScaled(0.4, 1.2, 0.4);
-    glutSolidCube(2);
-
-    // Voltar para escala original e desenhar a seta
+    glColor3f(1.0f, 1.0f, 1.0f); // Branco
+    glScaled(0.5, 0.5, 0.5);
+    personagem.ExibeObjeto();
     glPopMatrix();
 
     glPushMatrix();
     glTranslatef(ALVO.x, ALVO.y - 1, ALVO.z - 0.1);
     glRotatef(anguloDoPersonagem + 180, 0.0f, 1.0f, 0.0f);
-
-    // Desenhar a seta
     desenhaSeta();
     glPopMatrix();
+}
+
+void desenhaInimigo()
+{
+    for (const auto &pos : posicoesInimigos)
+    {
+        if (isPositionValid(pos.x, pos.z))
+        {
+            glPushMatrix();
+            glTranslatef(pos.x, -0.9f, pos.z);
+            glRotatef(-90, 1, 0, 0); // Ajusta a posição que vem errada no .tri
+            glRotatef(anguloDoInimigo, 0.0f, 0.0f, 1.0f);
+            glScaled(0.02, 0.02, 0.02);
+            glColor3f(0.6f, 0.4f, 0.2f);
+            inimigo.ExibeObjeto();
+            glPopMatrix();
+        }
+    }
+}
+
+void desenhaCapsulaEnergia()
+{
+    for (const auto &pos : posicoesCapsulasEnergia)
+    {
+        if (isPositionValid(pos.x, pos.z))
+        {
+
+            glPushMatrix();
+            glTranslatef(pos.x, 0.02f, pos.z);
+            glScalef(0.002f, 0.002f, 0.002f);
+            // glRotatef(angulo, 0, 1, 0); // Para girar em torno de si mesmo
+            glColor3f(0.0f, 0.0f, 0.0f); // cor preta
+            capsulaEnergia.ExibeObjeto();
+            glPopMatrix();
+        }
+    }
+}
+
+void detectaColisaoCapsula()
+{
+    BoundingBox personagemBox = getBoundingBox(ALVO, personagemWidth, personagemHeight, personagemDepth);
+    for (auto it = posicoesCapsulasEnergia.begin(); it != posicoesCapsulasEnergia.end();)
+    {
+        BoundingBox capsulaBox = getBoundingBox(*it, 1, 1, 1);
+        if (detectCollision(personagemBox, capsulaBox))
+        {
+            cout << "Personagem atingiu a capsula de energia" << endl;
+            // Remover a cápsula da lista
+            it = posicoesCapsulasEnergia.erase(it);
+        }
+        else
+        {
+            ++it; // Avançar para a próxima cápsula se não houve colisão
+        }
+    }
+}
+
+void moveInimigo()
+{
+    float velocidadeInimigo = 0.1f; // Velocidade de movimento do inimigo
+
+    for (auto it = posicoesInimigos.begin(); it != posicoesInimigos.end();)
+    {
+        // Calcular vetor direção para o personagem principal
+        float dirX = ALVO.x - it->x;
+        float dirZ = ALVO.z - it->z;
+
+        // Normalizar o vetor direção (para manter a mesma velocidade independentemente da distância)
+        float length = sqrt(dirX * dirX + dirZ * dirZ);
+        if (length != 0)
+        {
+            dirX /= length;
+            dirZ /= length;
+        }
+
+        // Atualizar posição do inimigo em direção ao personagem principal
+        it->x += dirX * velocidadeInimigo;
+        it->z += dirZ * velocidadeInimigo;
+
+        // Atualizar ângulo do inimigo
+        anguloDoInimigo = atan2(dirX, dirZ) * 180.0 / PI;
+
+        // Verificar colisão com paredes
+        if (!isPositionValid(it->x, it->z))
+        {
+            // Implementar lógica de ajuste de movimento ou parada
+            // Por exemplo, voltar à posição anterior
+            it->x -= dirX * velocidadeInimigo;
+            it->z -= dirZ * velocidadeInimigo;
+        }
+
+        // Verificar colisão com o personagem
+        BoundingBox inimigoBox = getBoundingBox(*it, inimigoWidth, inimigoHeight, inimigoDepth);
+        BoundingBox personagemBox = getBoundingBox(ALVO, personagemWidth, personagemHeight, personagemDepth);
+
+        if (detectCollision(inimigoBox, personagemBox))
+        {
+            // Implementar ação de colisão com o personagem
+            cout << "O inimigo colidiu com o personagem!" << endl;
+            nVidas--;
+
+            // Remover o inimigo da lista
+            it = posicoesInimigos.erase(it);
+        }
+        else
+        {
+            ++it; // Avançar para o próximo inimigo se não houve colisão
+        }
+    }
 }
 
 // **********************************************************************
@@ -535,7 +774,7 @@ void DesenhaChaoV2()
     glColor3f(0.4f, 0.2f, 0.1f); // Marrom escuro
     glPushMatrix();
     glScaled(1, 1, 1);
-    // glBindTexture(GL_TEXTURE_2D, TEX2);
+    // glBindTexture(GL_TEXTURE_2D, texPiso);
     glutSolidCube(1.0);
     glPopMatrix();
 }
@@ -749,17 +988,11 @@ void display(void)
 
     DesenhaPiso();
     drawLabirinto();
-    // criaPersonagem();
     desenhaPersonagem();
-
-    // Exibicao do objeto lido de arquivo
-    glPushMatrix();
-    glTranslatef(20.0f, 0.5f, 20.0f);
-    glScalef(0.005f, 0.005f, 0.005f);
-    // glRotatef(65,0,0,1);
-    glColor3f(0.0f, 0.0f, 0.0f);
-    objeto3D.ExibeObjeto();
-    glPopMatrix();
+    desenhaCapsulaEnergia();
+    desenhaInimigo();
+    moveInimigo();
+    detectaColisaoCapsula();
 
     /*glPushMatrix();
     glTranslatef(-4.0f, 1.0f, 0.0f);
@@ -822,7 +1055,7 @@ void keyboard(unsigned char key, int x, int y)
         break;
     }
 
-    if (!detectaColisao3D(novaPosicao))
+    if (!detectaColisaoParede(novaPosicao))
     {
         posAlvoX = novaPosicao.x;
         posAlvoZ = novaPosicao.z;
@@ -870,7 +1103,19 @@ int main(int argc, char **argv)
     // system("pwd");
 
     readMap("MatrizMapa.txt");
-    objeto3D.LeObjeto("energy.tri");
+    initPositions();
+
+    // Carrega objetos 3D
+    capsulaEnergia.LeObjeto("energy.tri");
+    cadeira.LeObjeto("Chair.tri");
+    mesa.LeObjeto("table.tri");
+    inimigo.LeObjeto("enemy.tri");
+    personagem.LeObjeto("personagemPrincipal.tri");
+
+    // Carrega as texturas
+    /*CarregaTextura("Parede.jpg", texParede);
+    CarregaTextura("Piso.jpg", texPiso);
+    CarregaTextura("Monster.jpg", texEnergy);*/
 
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
