@@ -63,7 +63,16 @@ double AccumDeltaT = 0;
 
 GLfloat AspectRatio, angulo = 0;
 
+// Controle do modo de projecao
+// 0: Projecao Paralela Ortografica; 1: Projecao Perspectiva
+// A funcao "PosicUser" utiliza esta variavel. O valor dela eh alterado
+// pela tecla 'p'
 int ModoDeProjecao = 1;
+
+// Controle do modo de projecao
+// 0: Wireframe; 1: Faces preenchidas
+// A funcao "Init" utiliza esta variavel. O valor dela eh alterado
+// pela tecla 'e'
 int ModoDeExibicao = 1;
 
 Instancia Personagens[10];
@@ -85,17 +94,9 @@ float anguloDoPersonagem = 0.0f;
 float anguloDoInimigo = 0.0f;
 int ModoDeCamera = 0;
 float anguloDaCamera = 0.0f;
-float cameraDist1 = 0.1f;
-float cameraDist3 = 10.0f;
+float cameraDist1 = 0.1f;  // Distância da câmera do personagem em 1º pessoa
+float cameraDist3 = 10.0f; // Distância da câmera do personagem em 3º pessoa
 
-// Caixa para detectar colisão
-struct BoundingBox {
-    Ponto min;
-    Ponto max;
-};
-
-<<<<<<< HEAD
-=======
 int inimigoWidth = 1;
 int inimigoHeight = 1;
 int inimigoDepth = 1;
@@ -263,39 +264,34 @@ Objeto3D capsulaEnergia, cadeira, mesa, estatua, inimigo, personagem;
 //  void init(void)
 //        Inicializa os parametros globais de OpenGL
 // **********************************************************************
->>>>>>> lucca
 void init(void)
 {
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClearColor(1.0f, 1.0f, 0.0f, 1.0f); // Fundo de tela preto
 
     glClearDepth(1.0);
     glDepthFunc(GL_LESS);
+    // glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glEnable(GL_NORMALIZE);
-<<<<<<< HEAD
-=======
     glEnable(GL_TEXTURE_2D); // Habilita textura
     // glShadeModel(GL_SMOOTH);
->>>>>>> lucca
     glShadeModel(GL_FLAT);
 
     glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-    if (ModoDeExibicao)
+    if (ModoDeExibicao) // Faces Preenchidas??
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     else
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-<<<<<<< HEAD
-    ALVO = Ponto(posAlvoX, posAlvoY, posAlvoZ);
-    OBS = Ponto(ALVO.x, ALVO.y, ALVO.z + 10);
-=======
 
     ALVO = Ponto(posAlvoX, posAlvoY, posAlvoZ); // Posição inicial do personagem
     OBS = Ponto(ALVO.x, ALVO.y, ALVO.z + 10);   // Posição inicial da camera
->>>>>>> lucca
     VetorAlvo = ALVO - OBS;
     // initTexture();
 }
 
+// **********************************************************************
+//
+// **********************************************************************
 void animate()
 {
     double dt;
@@ -304,7 +300,7 @@ void animate()
     TempoTotal += dt;
     nFrames++;
 
-    if (AccumDeltaT > 1.0 / 30)
+    if (AccumDeltaT > 1.0 / 30) // fixa a atualiza��o da tela em 30
     {
         AccumDeltaT = 0;
         angulo += 1;
@@ -391,53 +387,6 @@ void readMap(const char *filename)
     }
 }
 
-BoundingBox getBoundingBox(Ponto pos, float width, float height, float depth) 
-{
-    BoundingBox box;
-    box.min = Ponto(pos.x - width / 2, pos.y - height / 2, pos.z - depth / 2);
-    box.max = Ponto(pos.x + width / 2, pos.y + height / 2, pos.z + depth / 2);
-    return box;
-}
-
-bool detectCollision(BoundingBox a, BoundingBox b) 
-{
-    return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
-           (a.min.y <= b.max.y && a.max.y >= b.min.y) &&
-           (a.min.z <= b.max.z && a.max.z >= b.min.z);
-}
-
-bool detectaColisao3D(Ponto personagemPos) {
-    float personagemWidth = 0.4;
-    float personagemHeight = 1.2;
-    float personagemDepth = 0.4;
-    
-    BoundingBox personagemBox = getBoundingBox(personagemPos, personagemWidth, personagemHeight, personagemDepth);
-    
-    for (int i = 0; i < linhas; ++i) {
-        for (int j = 0; j < colunas; ++j) {
-            if (labirinto[i][j] == PAREDE1 || labirinto[i][j] == PAREDE2) {
-                Ponto paredePos = Ponto(CantoEsquerdo.x + j, CantoEsquerdo.y + 1, CantoEsquerdo.z + i);
-                float paredeWidth = 1.0;
-                float paredeHeight = WALL_HEIGHT;
-                float paredeDepth = WALL_THICKNESS;
-                
-                if (labirinto[i][j] == PAREDE2) {
-                    paredeDepth = 1.0;
-                    paredeWidth = WALL_THICKNESS;
-                }
-
-                BoundingBox paredeBox = getBoundingBox(paredePos, paredeWidth, paredeHeight, paredeDepth);
-                
-                if (detectCollision(personagemBox, paredeBox)) {
-                    cout << "PERSONAGEM BATEU NA PAREDE!" << endl;
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
 void drawLabirinto()
 {
     for (int i = 0; i < linhas; ++i)
@@ -449,7 +398,7 @@ void drawLabirinto()
             switch (labirinto[i][j])
             {
             case PAREDE1:
-                glColor3f(0.5f, 0.5f, 0.5f);
+                glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
                 glPushMatrix();
                 glScaled(1, WALL_HEIGHT, WALL_THICKNESS);
                 // glBindTexture(GL_TEXTURE_2D, texPiso);
@@ -457,7 +406,7 @@ void drawLabirinto()
                 glPopMatrix();
                 break;
             case PAREDE2:
-                glColor3f(0.5f, 0.5f, 0.5f);
+                glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
                 glPushMatrix();
                 glRotatef(90, 0, 0.1, 0);
                 glScaled(1, WALL_HEIGHT, WALL_THICKNESS);
@@ -465,41 +414,30 @@ void drawLabirinto()
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
-<<<<<<< HEAD
-=======
                 // case PISO:
                 // DesenhaLadrilho(DarkBrown, DarkBrown);
                 // break;
->>>>>>> lucca
             case JANELA:
-                glColor3f(0.5f, 0.5f, 0.5f);
+                // Parte inferior da janela
+                glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
                 glPushMatrix();
-<<<<<<< HEAD
-                glTranslated(0, -WALL_HEIGHT / 3, 0);
-                glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS);
-=======
                 glTranslated(0, -WALL_HEIGHT / 3, 0);         // Translação para a parte inferior
                 glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS); // Escalamento para 1/3 da altura da parede
                 // glBindTexture(GL_TEXTURE_2D, texPiso);
->>>>>>> lucca
                 glutSolidCube(1.0);
                 glPopMatrix();
 
-                glColor3f(0.5f, 0.5f, 0.5f);
+                // Parte superior da janela
+                glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
                 glPushMatrix();
-<<<<<<< HEAD
-                glTranslated(0, WALL_HEIGHT / 3, 0);
-                glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS);
-=======
                 glTranslated(0, WALL_HEIGHT / 3, 0);          // Translação para a parte superior
                 glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS); // Escalamento para 1/3 da altura da parede
                 // glBindTexture(GL_TEXTURE_2D, texPiso);
->>>>>>> lucca
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
             case PORTA:
-                glColor3f(0.5f, 0.5f, 0.5f);
+                glColor3f(0.5f, 0.5f, 0.5f); // Cinza para paredes
                 glPushMatrix();
                 glTranslated(0, 1.05, 0);
                 glScaled(1, 0.6, WALL_THICKNESS);
@@ -507,8 +445,6 @@ void drawLabirinto()
                 glutSolidCube(1.0);
                 glPopMatrix();
                 break;
-<<<<<<< HEAD
-=======
             case CADEIRA:
                 glPushMatrix();
                 glTranslated(0, -0.9, 0);
@@ -529,7 +465,6 @@ void drawLabirinto()
             // DesenhaLadrilho(Green, Green);
             // break;
             // Adicione mais cases para outros tipos de células
->>>>>>> lucca
             default:
                 break;
             }
@@ -538,8 +473,6 @@ void drawLabirinto()
     }
 }
 
-<<<<<<< HEAD
-=======
 bool isPositionValid(int x, int z, float minDistance = 5.0f)
 {
     // Verifica se a posição está dentro dos limites do labirinto
@@ -609,18 +542,19 @@ void initPositions()
     }
 }
 
->>>>>>> lucca
 void desenhaSeta()
 {
     glBegin(GL_TRIANGLES);
-    glColor3f(1.0f, 0.0f, 0.0f);
+    // Cabeça da seta
+    glColor3f(1.0f, 0.0f, 0.0f); // Vermelho
     glVertex3f(0.0f, 0.0f, 1.5f);
     glVertex3f(0.2f, 0.0f, 0.5f);
     glVertex3f(-0.2f, 0.0f, 0.5f);
     glEnd();
 
     glBegin(GL_QUADS);
-    glColor3f(0.8f, 0.0f, 0.0f);
+    // Haste da seta
+    glColor3f(0.8f, 0.0f, 0.0f); // Vermelho escuro
     glVertex3f(0.05f, 0.0f, 0.5f);
     glVertex3f(-0.05f, 0.0f, 0.5f);
     glVertex3f(-0.05f, 0.0f, -0.5f);
@@ -632,33 +566,20 @@ void desenhaPersonagem()
 {
     glPushMatrix();
     glTranslatef(ALVO.x, ALVO.y - 1, ALVO.z);
+    // Aplicar a rotação do personagem em torno do eixo Y
     glRotatef(anguloDoPersonagem, 0.0f, 1.0f, 0.0f);
-<<<<<<< HEAD
-
-    glColor3f(0.5f, 0.0f, 0.5f);
-    glScaled(0.4, 1.2, 0.4);
-    glutSolidCube(2);
-
-=======
     glColor3f(1.0f, 1.0f, 1.0f); // Branco
     glScaled(0.5, 0.5, 0.5);
     personagem.ExibeObjeto();
->>>>>>> lucca
     glPopMatrix();
 
     glPushMatrix();
     glTranslatef(ALVO.x, ALVO.y - 1, ALVO.z - 0.1);
     glRotatef(anguloDoPersonagem + 180, 0.0f, 1.0f, 0.0f);
-<<<<<<< HEAD
-
-=======
->>>>>>> lucca
     desenhaSeta();
     glPopMatrix();
 }
 
-<<<<<<< HEAD
-=======
 void desenhaInimigo()
 {
     for (const auto &pos : posicoesInimigos)
@@ -777,35 +698,40 @@ boolean acabouEnergiaOuPontos()
 // **********************************************************************
 //  void DesenhaCubo()
 // **********************************************************************
->>>>>>> lucca
 void DesenhaCubo(float tamAresta)
 {
     glBegin(GL_QUADS);
+    // Front Face
     glNormal3f(0, 0, 1);
     glVertex3f(-tamAresta / 2, -tamAresta / 2, tamAresta / 2);
     glVertex3f(tamAresta / 2, -tamAresta / 2, tamAresta / 2);
     glVertex3f(tamAresta / 2, tamAresta / 2, tamAresta / 2);
     glVertex3f(-tamAresta / 2, tamAresta / 2, tamAresta / 2);
+    // Back Face
     glNormal3f(0, 0, -1);
     glVertex3f(-tamAresta / 2, -tamAresta / 2, -tamAresta / 2);
     glVertex3f(-tamAresta / 2, tamAresta / 2, -tamAresta / 2);
     glVertex3f(tamAresta / 2, tamAresta / 2, -tamAresta / 2);
     glVertex3f(tamAresta / 2, -tamAresta / 2, -tamAresta / 2);
+    // Top Face
     glNormal3f(0, 1, 0);
     glVertex3f(-tamAresta / 2, tamAresta / 2, -tamAresta / 2);
     glVertex3f(-tamAresta / 2, tamAresta / 2, tamAresta / 2);
     glVertex3f(tamAresta / 2, tamAresta / 2, tamAresta / 2);
     glVertex3f(tamAresta / 2, tamAresta / 2, -tamAresta / 2);
+    // Bottom Face
     glNormal3f(0, -1, 0);
     glVertex3f(-tamAresta / 2, -tamAresta / 2, -tamAresta / 2);
     glVertex3f(tamAresta / 2, -tamAresta / 2, -tamAresta / 2);
     glVertex3f(tamAresta / 2, -tamAresta / 2, tamAresta / 2);
     glVertex3f(-tamAresta / 2, -tamAresta / 2, tamAresta / 2);
+    // Right face
     glNormal3f(1, 0, 0);
     glVertex3f(tamAresta / 2, -tamAresta / 2, -tamAresta / 2);
     glVertex3f(tamAresta / 2, tamAresta / 2, -tamAresta / 2);
     glVertex3f(tamAresta / 2, tamAresta / 2, tamAresta / 2);
     glVertex3f(tamAresta / 2, -tamAresta / 2, tamAresta / 2);
+    // Left Face
     glNormal3f(-1, 0, 0);
     glVertex3f(-tamAresta / 2, -tamAresta / 2, -tamAresta / 2);
     glVertex3f(-tamAresta / 2, -tamAresta / 2, tamAresta / 2);
@@ -813,19 +739,26 @@ void DesenhaCubo(float tamAresta)
     glVertex3f(-tamAresta / 2, tamAresta / 2, -tamAresta / 2);
     glEnd();
 }
-
 void DesenhaParalelepipedo()
 {
     glPushMatrix();
     glTranslatef(0, 0, -1);
     glScalef(1, 1, 2);
     glutSolidCube(2);
+    // DesenhaCubo(1);
     glPopMatrix();
 }
 
+// **********************************************************************
+// void DesenhaLadrilho(int corBorda, int corDentro)
+// Desenha uma c�lula do piso.
+// Eh possivel definir a cor da borda e do interior do piso
+// O ladrilho tem largula 1, centro no (0,0,0) e est� sobre o plano XZ
+// **********************************************************************
 void DesenhaLadrilho(int corBorda, int corDentro)
 {
-    defineCor(corDentro);
+    defineCor(corDentro); // desenha QUAD preenchido
+    // glColor3f(1,1,1);
     glBegin(GL_QUADS);
     glNormal3f(0, 1, 0);
     glVertex3f(-0.5f, 0.0f, -0.5f);
@@ -835,6 +768,7 @@ void DesenhaLadrilho(int corBorda, int corDentro)
     glEnd();
 
     defineCor(corBorda);
+    // glColor3f(0,1,0);
 
     glBegin(GL_LINE_STRIP);
     glNormal3f(0, 1, 0);
@@ -847,7 +781,7 @@ void DesenhaLadrilho(int corBorda, int corDentro)
 
 void DesenhaChaoV2()
 {
-    glColor3f(0.4f, 0.2f, 0.1f);
+    glColor3f(0.4f, 0.2f, 0.1f); // Marrom escuro
     glPushMatrix();
     glScaled(1, 1, 1);
     // glBindTexture(GL_TEXTURE_2D, texPiso);
@@ -855,9 +789,13 @@ void DesenhaChaoV2()
     glPopMatrix();
 }
 
+// **********************************************************************
+//
+//
+// **********************************************************************
 void DesenhaPiso()
 {
-    srand(100);
+    srand(100); // usa uma semente fixa para gerar sempre as mesma cores no piso
     glPushMatrix();
     glTranslated(CantoEsquerdo.x, CantoEsquerdo.y, CantoEsquerdo.z);
     for (int x = 0; x < linhas; x++)
@@ -881,7 +819,6 @@ void DesenhaParedao()
     DesenhaPiso();
     glPopMatrix();
 }
-
 void DesenhaChao()
 {
     glPushMatrix();
@@ -893,54 +830,86 @@ void DesenhaChao()
     DesenhaPiso();
     glPopMatrix();
 }
-
+// **********************************************************************
+//  void DefineLuz(void)
+// **********************************************************************
 void DefineLuz(void)
 {
+    // Define cores para um objeto dourado
+    // GLfloat LuzAmbiente[]   = {0.0, 0.0, 0.0 } ;
     GLfloat LuzAmbiente[] = {0.4, 0.4, 0.4};
     GLfloat LuzDifusa[] = {0.7, 0.7, 0.7};
-    GLfloat PosicaoLuz0[] = {0.0f, 3.0f, 5.0f};
+    // GLfloat LuzDifusa[]   = {0, 0, 0};
+    GLfloat PosicaoLuz0[] = {0.0f, 3.0f, 5.0f}; // Posi��o da Luz
     GLfloat LuzEspecular[] = {0.9f, 0.9f, 0.9};
+    // GLfloat LuzEspecular[] = {0.0f, 0.0f, 0.0 };
 
     GLfloat Especularidade[] = {1.0f, 1.0f, 1.0f};
 
+    // ****************  Fonte de Luz 0
+
     glEnable(GL_COLOR_MATERIAL);
+
+    // Habilita o uso de ilumina��o
     glEnable(GL_LIGHTING);
+
+    // Ativa o uso da luz ambiente
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, LuzAmbiente);
+    // Define os parametros da luz n�mero Zero
     glLightfv(GL_LIGHT0, GL_AMBIENT, LuzAmbiente);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, LuzDifusa);
     glLightfv(GL_LIGHT0, GL_SPECULAR, LuzEspecular);
     glLightfv(GL_LIGHT0, GL_POSITION, PosicaoLuz0);
     glEnable(GL_LIGHT0);
+
+    // Ativa o "Color Tracking"
     glEnable(GL_COLOR_MATERIAL);
+
+    // Define a reflectancia do material
     glMaterialfv(GL_FRONT, GL_SPECULAR, Especularidade);
+
+    // Define a concentra��oo do brilho.
+    // Quanto maior o valor do Segundo parametro, mais
+    // concentrado ser� o brilho. (Valores v�lidos: de 0 a 128)
     glMateriali(GL_FRONT, GL_SHININESS, 128);
 }
+// **********************************************************************
 
 void MygluPerspective(float fieldOfView, float aspect, float zNear, float zFar)
 {
+    // https://stackoverflow.com/questions/2417697/gluperspective-was-removed-in-opengl-3-1-any-replacements/2417756#2417756
+    //  The following code is a fancy bit of math that is equivilant to calling:
+    //  gluPerspective( fieldOfView/2.0f, width/height , 0.1f, 255.0f )
+    //  We do it this way simply to avoid requiring glu.h
+    // GLfloat zNear = 0.1f;
+    // GLfloat zFar = 255.0f;
+    // GLfloat aspect = float(width)/float(height);
     GLfloat fH = tan(float(fieldOfView / 360.0f * 3.14159f)) * zNear;
     GLfloat fW = fH * aspect;
     glFrustum(-fW, fW, -fH, fH, zNear, zFar);
 }
-
+// **********************************************************************
+//  void PosicUser()
+// **********************************************************************
 void PosicUser()
 {
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
 
+    // Defina a projeção dependendo do modo de câmera
     if (ModoDeProjecao == 0)
     {
-        glOrtho(-10, 10, -10, 10, 0, 20);
+        glOrtho(-10, 10, -10, 10, 0, 20); // Projeção paralela Orthográfica
     }
     else
     {
-        MygluPerspective(60, AspectRatio, 0.1, 50);
+        MygluPerspective(60, AspectRatio, 0.1, 50); // Projeção perspectiva
     }
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    float cameraD = cameraDist1;
+    float cameraD = cameraDist1; // Distância da câmera para primeira pessoa
 
     if (ModoDeCamera == 0)
     {
@@ -951,10 +920,11 @@ void PosicUser()
     }
     else if (ModoDeCamera == 1)
     {
-        cameraD = cameraDist3;
+        cameraD = cameraDist3; // Distância da câmera para terceira pessoa
     }
     else if (ModoDeCamera == 2)
     {
+        // Defina a câmera acima do mapa
         OBS.x = posAlvoX;
         OBS.z = posAlvoZ;
         OBS.y = posAlvoY + 25;
@@ -963,10 +933,14 @@ void PosicUser()
         ALVO.y = posAlvoY;
         ALVO.z = posAlvoZ;
 
-        gluLookAt(OBS.x, OBS.y, OBS.z, ALVO.x, ALVO.y, ALVO.z, 0.0, 0.0, -1.0);
-        return;
+        gluLookAt(OBS.x, OBS.y, OBS.z,    // Posição do Observador
+                  ALVO.x, ALVO.y, ALVO.z, // Posição do Alvo
+                  0.0, 0.0, -1.0);        // Vetor Up
+
+        return; // Retorna pois não há necessidade de seguir com o restante da função
     }
 
+    // Cálculo da posição e orientação da câmera
     OBS.x = posAlvoX - cameraD * sin(anguloDaCamera * M_PI / 180.0f);
     OBS.z = posAlvoZ + cameraD * cos(anguloDaCamera * M_PI / 180.0f);
 
@@ -974,21 +948,41 @@ void PosicUser()
     ALVO.y = posAlvoY;
     ALVO.z = posAlvoZ;
 
-    gluLookAt(OBS.x, OBS.y, OBS.z, ALVO.x, ALVO.y, ALVO.z, 0.0, 1.0, 0.0);
+    gluLookAt(OBS.x, OBS.y, OBS.z,    // Posição do Observador
+              ALVO.x, ALVO.y, ALVO.z, // Posição do Alvo
+              0.0, 1.0, 0.0);         // Vetor Up
+
+    // Atualizar o ângulo do personagem para igualar ao da câmera
+    // anguloDoPersonagem = anguloDaCamera;
 }
 
+// **********************************************************************
+//  void reshape( int w, int h )
+//		trata o redimensionamento da janela OpenGL
+//
+// **********************************************************************
 void reshape(int w, int h)
 {
+
+    // Evita divis�o por zero, no caso de uam janela com largura 0.
     if (h == 0)
         h = 1;
+    // Ajusta a rela��o entre largura e altura para evitar distor��o na imagem.
+    // Veja fun��o "PosicUser".
     AspectRatio = 1.0f * w / h;
+    // Reset the coordinate system before modifying
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
+    // Seta a viewport para ocupar toda a janela
     glViewport(0, 0, w, h);
+    // cout << "Largura" << w << endl;
 
     PosicUser();
 }
 
+// **********************************************************************
+//  void display( void )
+// **********************************************************************
 float PosicaoZ = -30;
 
 void renderText(float x, float y, void *font, std::string text) {
@@ -1070,14 +1064,18 @@ void displayInfo()
 
 void display(void)
 {
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // DefineLuz();
+
     PosicUser();
+
     glMatrixMode(GL_MODELVIEW);
+
     DesenhaPiso();
     drawLabirinto();
     desenhaPersonagem();
-<<<<<<< HEAD
-=======
     desenhaCapsulaEnergia();
     desenhaInimigo();
     moveInimigo();
@@ -1099,10 +1097,14 @@ void display(void)
     // glutSolidTeapot(2);
     // DesenhaParedao();
 
->>>>>>> lucca
     glutSwapBuffers();
 }
 
+// **********************************************************************
+//  void keyboard ( unsigned char key, int x, int y )
+//
+//
+// **********************************************************************
 void keyboard(unsigned char key, int x, int y)
 {
     float stepSize = 1.0f;
@@ -1111,8 +1113,8 @@ void keyboard(unsigned char key, int x, int y)
 
     switch (key)
     {
-    case 27:
-        exit(0);
+    case 27:     // Termina o programa qdo
+        exit(0); // a tecla ESC for pressionada
         break;
     case 'p':
         ModoDeCamera++;
@@ -1127,24 +1129,18 @@ void keyboard(unsigned char key, int x, int y)
     case 'w':
         novaPosicao.x += stepSize * sin(anguloDaCamera * M_PI / 180.0f);
         novaPosicao.z -= stepSize * cos(anguloDaCamera * M_PI / 180.0f);
-<<<<<<< HEAD
-=======
         TOTAL_ENERGIA -= 5; // se mover para frente perde energia
->>>>>>> lucca
         break;
     case 's':
         novaPosicao.x -= stepSize * sin(anguloDaCamera * M_PI / 180.0f);
         novaPosicao.z += stepSize * cos(anguloDaCamera * M_PI / 180.0f);
-<<<<<<< HEAD
-=======
         TOTAL_ENERGIA -= 5; // se mover para tràs perde energia
->>>>>>> lucca
         break;
-    case 'a':
+    case 'a': // Andar para esquerda
         anguloDaCamera -= angleStep;
         anguloDoPersonagem += angleStep;
         break;
-    case 'd':
+    case 'd': // Andar para direita
         anguloDaCamera += angleStep;
         anguloDoPersonagem -= angleStep;
         break;
@@ -1153,33 +1149,42 @@ void keyboard(unsigned char key, int x, int y)
         break;
     }
 
-<<<<<<< HEAD
-    if (!detectaColisao3D(novaPosicao))
-=======
     if (!detectaColisaoParede(novaPosicao))
->>>>>>> lucca
     {
         posAlvoX = novaPosicao.x;
         posAlvoZ = novaPosicao.z;
     }
 }
 
+// **********************************************************************
+//  void arrow_keys ( int a_keys, int x, int y )
+//
+//
+// **********************************************************************
 void arrow_keys(int a_keys, int x, int y)
 {
     switch (a_keys)
     {
-    case GLUT_KEY_UP:
-        glutFullScreen();
+    case GLUT_KEY_UP:     // When Up Arrow Is Pressed...
+        glutFullScreen(); // Go Into Full Screen Mode
         break;
-    case GLUT_KEY_DOWN:
+    case GLUT_KEY_DOWN: // When Down Arrow Is Pressed...
         glutInitWindowPosition(0, 0);
         glutInitWindowSize(700, 700);
         break;
+        // case GLUT_KEY_RIGHT: // When Up Arrow Is Pressed...
+        //  PosicaoLuz0[0]++; // Go Into Full Screen Mode
+        // break;
     default:
         break;
     }
 }
 
+// **********************************************************************
+//  void main ( int argc, char** argv )
+//
+//
+// **********************************************************************
 int main(int argc, char **argv)
 {
     glutInit(&argc, argv);
@@ -1189,6 +1194,7 @@ int main(int argc, char **argv)
     glutCreateWindow("Computacao Grafica - Exemplo Basico 3D");
 
     init();
+    // system("pwd");
 
     readMap("MatrizMapa.txt");
     initPositions();
