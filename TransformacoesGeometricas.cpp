@@ -101,9 +101,10 @@ int inimigoWidth = 1;
 int inimigoHeight = 1;
 int inimigoDepth = 1;
 
-int personagemWidth = 1;
-int personagemHeight = 1;
-int personagemDepth = 1;
+float personagemWidth = 0.4;
+float personagemHeight = 1.2;
+float personagemDepth = 0.4;
+
 
 GLuint texParede, texPiso, texEnergy;
 
@@ -338,7 +339,7 @@ bool detectaColisaoParede(Ponto personagemPos)
     {
         for (int j = 0; j < colunas; ++j)
         {
-            if (labirinto[i][j] == PAREDE1 || labirinto[i][j] == PAREDE2)
+            if (labirinto[i][j] == PAREDE1 || labirinto[i][j] == PAREDE2 || labirinto[i][j] == JANELA) // janela tambem é uma parede
             {
                 Ponto paredePos = Ponto(CantoEsquerdo.x + j, CantoEsquerdo.y + 1, CantoEsquerdo.z + i);
                 float paredeWidth = 1.0;
@@ -523,8 +524,8 @@ Ponto generateRandomPosition()
 
 void initPositions()
 {
-    int numInimigos = 2; // Por exemplo
-    int numCapsulas = 2; // Por exemplo
+    int numInimigos = 10; // Por exemplo
+    int numCapsulas = 10; // Por exemplo
 
     for (int i = 0; i < numInimigos; i++)
     {
@@ -678,8 +679,6 @@ void moveInimigo()
 
             // Remover o inimigo da lista
             it = posicoesInimigos.erase(it);
-
-            if (TOTAL_PONTOS == 0 || TOTAL_ENERGIA == 0) exit(0);
         }
         else
         {
@@ -688,9 +687,9 @@ void moveInimigo()
     }
 }
 
-boolean acabouEnergia()
+boolean acabouEnergiaOuPontos()
 {
-    if (TOTAL_ENERGIA == 0) 
+    if (TOTAL_ENERGIA == 0 || TOTAL_PONTOS == 0) 
         return true;
 
     return false;
@@ -1011,7 +1010,7 @@ void displayGameOver()
     glLoadIdentity();
 
     // Converta o número de vidas para uma string
-    std::string infoStr = "GAME OVER! A energia do jogador acabou!";
+    std::string infoStr = "GAME OVER! Você perdeu!";
 
     // Renderize o texto na posição escolhida
     renderText(10, glutGet(GLUT_WINDOW_HEIGHT) - 20, GLUT_BITMAP_HELVETICA_18, infoStr);
@@ -1083,9 +1082,9 @@ void display(void)
     detectaColisaoCapsula();
     displayInfo(); 
 
-    if (acabouEnergia()) {
+    if (acabouEnergiaOuPontos()) {
         displayGameOver();
-        exit(0);
+        exit(1);
     }
     /*glPushMatrix();
     glTranslatef(-4.0f, 1.0f, 0.0f);
