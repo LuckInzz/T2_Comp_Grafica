@@ -82,7 +82,7 @@ int ModoDeExibicao = 1;
 
 Instancia Personagens[10];
 int TOTAL_PONTOS = 10;    // total de pontos inicial
-int TOTAL_ENERGIA = 1000; // energia inicial do jogador
+int TOTAL_ENERGIA = 2000; // energia inicial do jogador
 
 double nFrames = 0;
 double TempoTotal = 0;
@@ -101,7 +101,7 @@ int ModoDeCamera = 0;
 float anguloDaCamera = 0.0f;
 float alturaCamera1 = 0.8;
 float cameraDist1 = 0.01f; // Distância da câmera do personagem em 1º pessoa
-float cameraDist3 = 10.0f; // Distância da câmera do personagem em 3º pessoa
+float cameraDist3 = 20.0f; // Distância da câmera do personagem em 3º pessoa
 
 int inimigoWidth = 1;
 int inimigoHeight = 1;
@@ -111,8 +111,8 @@ int personagemWidth = 0.8;
 int personagemHeight = 0.8;
 int personagemDepth = 0.8;
 
-bool emMovimento = true; // personagem começa em movimento
-float stepSize = 0.05f; 
+bool emMovimento = true;
+float stepSize = 0.05f;
 float angleStep = 5.0f;
 
 GLuint texParede, texPiso, texEnergy;
@@ -270,107 +270,9 @@ void init(void)
     VetorAlvo = ALVO - OBS;
 }
 
-BoundingBox getBoundingBox(Ponto pos, float width, float height, float depth)
-{
-    BoundingBox box;
-    box.min = Ponto(pos.x - width / 2, pos.y - height / 2, pos.z - depth / 2);
-    box.max = Ponto(pos.x + width / 2, pos.y + height / 2, pos.z + depth / 2);
-    return box;
-}
-
-bool detectCollision(BoundingBox a, BoundingBox b)
-{
-    return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
-           (a.min.y <= b.max.y && a.max.y >= b.min.y) &&
-           (a.min.z <= b.max.z && a.max.z >= b.min.z);
-}
-
-void atualizaCamera()
-{
-    float alvoX = posAlvoX + sin(anguloDaCamera * M_PI / 180.0f);
-    float alvoZ = posAlvoZ - cos(anguloDaCamera * M_PI / 180.0f);
-    gluLookAt(posAlvoX, posAlvoY, posAlvoZ, alvoX, posAlvoY, alvoZ, 0.0f, 1.0f, 0.0f);
-}
-
-bool detectaColisaoParede(Ponto personagemPos)
-{
-    BoundingBox personagemBox = getBoundingBox(personagemPos, personagemWidth, personagemHeight, personagemDepth);
-
-    for (int i = 0; i < linhas; ++i)
-    {
-        for (int j = 0; j < colunas; ++j)
-        {
-            if (labirinto[i][j] == PAREDE1 || labirinto[i][j] == PAREDE2 || labirinto[i][j] == JANELA)
-            {
-                Ponto paredePos = Ponto(CantoEsquerdo.x + j, CantoEsquerdo.y + 1, CantoEsquerdo.z + i);
-                float paredeWidth = 1.0;
-                float paredeHeight = WALL_HEIGHT;
-                float paredeDepth = WALL_THICKNESS;
-
-                if (labirinto[i][j] == PAREDE2)
-                {
-                    paredeDepth = 1.0;
-                    paredeWidth = WALL_THICKNESS;
-                }
-
-                BoundingBox paredeBox = getBoundingBox(paredePos, paredeWidth, paredeHeight, paredeDepth);
-
-                if (detectCollision(personagemBox, paredeBox))
-                {
-                    cout << "PERSONAGEM BATEU NA PAREDE!" << endl;
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
-
 // **********************************************************************
 //
 // **********************************************************************
-void animate()
-{
-    if (emMovimento) {
-        Ponto novaPosicao = Ponto(posAlvoX, posAlvoY, posAlvoZ);
-
-        // Calcula a nova posição
-        novaPosicao.x += stepSize * sin(anguloDaCamera * M_PI / 180.0f);
-        novaPosicao.z -= stepSize * cos(anguloDaCamera * M_PI / 180.0f);
-
-        // Verifica colisão antes de atualizar a posição
-        if (!detectaColisaoParede(novaPosicao))
-        {
-            posAlvoX = novaPosicao.x;
-            posAlvoZ = novaPosicao.z;
-        }
-
-        atualizaCamera();
-        glutPostRedisplay();
-    }
-
-    double dt;
-    dt = T.getDeltaT();
-    AccumDeltaT += dt;
-    TempoTotal += dt;
-    nFrames++;
-
-    if (AccumDeltaT > 1.0 / 30) // fixa a atualiza��o da tela em 30
-    {
-        AccumDeltaT = 0;
-        angulo += 1;
-        glutPostRedisplay();
-    }
-    if (TempoTotal > 5.0)
-    {
-        cout << "Tempo Acumulado: " << TempoTotal << " segundos. ";
-        cout << "Nros de Frames sem desenho: " << nFrames << endl;
-        cout << "FPS(sem desenho): " << nFrames / TempoTotal << endl;
-        TempoTotal = 0;
-        nFrames = 0;
-    }
-}
 
 // Função para carregar uma textura
 GLuint carregarTextura(GLuint id, std::string filepath)
@@ -403,16 +305,146 @@ void inicializarTexturas()
 {
     glGenTextures(1, &texParede);
     glGenTextures(1, &texPiso);
-    glGenTextures(1, &texEnergy);
+    // glGenTextures(1, &texEnergy);
 
     texParede = carregarTextura(texParede, "Parede.jpg");
     texPiso = carregarTextura(texPiso, "Piso.jpg");
-    texEnergy = carregarTextura(texEnergy, "Monster.jpg");
+    // texEnergy = carregarTextura(texEnergy, "Monster.jpg");
 
-    if (texParede == 0 || texPiso == 0 || texEnergy == 0)
+    if (texParede == 0 || texPiso == 0)
     {
         std::cerr << "Erro ao carregar uma ou mais texturas!" << std::endl;
         exit(EXIT_FAILURE); // Sai do programa se uma textura não foi carregada corretamente
+    }
+}
+
+BoundingBox getBoundingBox(Ponto pos, float width, float height, float depth)
+{
+    BoundingBox box;
+    box.min = Ponto(pos.x - width / 2, pos.y - height / 2, pos.z - depth / 2);
+    box.max = Ponto(pos.x + width / 2, pos.y + height / 2, pos.z + depth / 2);
+    return box;
+}
+
+bool detectCollision(BoundingBox a, BoundingBox b)
+{
+    return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
+           (a.min.y <= b.max.y && a.max.y >= b.min.y) &&
+           (a.min.z <= b.max.z && a.max.z >= b.min.z);
+}
+
+bool detectaColisao(Ponto pos)
+{
+    BoundingBox personagemBox = getBoundingBox(pos, personagemWidth, personagemHeight, personagemDepth);
+
+    for (int i = 0; i < linhas; ++i)
+    {
+        for (int j = 0; j < colunas; ++j)
+        {
+            // Verificar colisão com paredes
+            if (labirinto[i][j] == PAREDE1 || labirinto[i][j] == JANELA)
+            {
+                Ponto paredePos = Ponto(CantoEsquerdo.x + j, CantoEsquerdo.y + 1, CantoEsquerdo.z + i);
+                float paredeWidth = 1.0;
+                float paredeHeight = WALL_HEIGHT;
+                float paredeDepth = WALL_THICKNESS;
+
+                BoundingBox paredeBox = getBoundingBox(paredePos, paredeWidth, paredeHeight, paredeDepth);
+
+                if (detectCollision(personagemBox, paredeBox))
+                {
+                    cout << "PERSONAGEM BATEU EM UMA PAREDE!" << endl;
+                    return true;
+                }
+            }
+
+            // Verificar colisão com cadeiras
+            /*if (labirinto[i][j] == CADEIRA)
+            {
+                Ponto cadeiraPos = Ponto(CantoEsquerdo.x + j, CantoEsquerdo.y + 1, CantoEsquerdo.z + i);
+                float cadeiraWidth = 0.5;
+                float cadeiraHeight = 0.5;
+                float cadeiraDepth = 0.5;
+
+                BoundingBox cadeiraBox = getBoundingBox(cadeiraPos, cadeiraWidth, cadeiraHeight, cadeiraDepth);
+
+                if (detectCollision(personagemBox, cadeiraBox))
+                {
+                    cout << "PERSONAGEM BATEU EM UMA CADEIRA!" << endl;
+                    return true;
+                }
+            }*/
+
+            // Verificar colisão com mesas
+            if (labirinto[i][j] == MESA)
+            {
+                Ponto mesaPos = Ponto(CantoEsquerdo.x + j, CantoEsquerdo.y + 1, CantoEsquerdo.z + i);
+                float mesaWidth = 1.0;
+                float mesaHeight = 0.5;
+                float mesaDepth = 1.5;
+
+                BoundingBox mesaBox = getBoundingBox(mesaPos, mesaWidth, mesaHeight, mesaDepth);
+
+                if (detectCollision(personagemBox, mesaBox))
+                {
+                    cout << "PERSONAGEM BATEU EM UMA MESA!" << endl;
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+void atualizaCamera()
+{
+    float alvoX = posAlvoX + sin(anguloDaCamera * M_PI / 180.0f);
+    float alvoZ = posAlvoZ - cos(anguloDaCamera * M_PI / 180.0f);
+    gluLookAt(posAlvoX, posAlvoY, posAlvoZ, alvoX, posAlvoY, alvoZ, 0.0f, 1.0f, 0.0f);
+}
+
+void animate()
+{
+    if (emMovimento)
+    {
+        TOTAL_ENERGIA -= 0.1;
+        Ponto novaPosicao = Ponto(posAlvoX, posAlvoY, posAlvoZ);
+
+        // Calcula a nova posição
+        novaPosicao.x += stepSize * sin(anguloDaCamera * M_PI / 180.0f);
+        novaPosicao.z -= stepSize * cos(anguloDaCamera * M_PI / 180.0f);
+
+        // Verifica colisão antes de atualizar a posição
+        if (!detectaColisao(novaPosicao))
+        {
+            posAlvoX = novaPosicao.x;
+            posAlvoZ = novaPosicao.z;
+        }
+
+        atualizaCamera();
+        glutPostRedisplay();
+    }
+
+    double dt;
+    dt = T.getDeltaT();
+    AccumDeltaT += dt;
+    TempoTotal += dt;
+    nFrames++;
+
+    if (AccumDeltaT > 1.0 / 30) // fixa a atualiza��o da tela em 30
+    {
+        AccumDeltaT = 0;
+        angulo += 1;
+        glutPostRedisplay();
+    }
+    if (TempoTotal > 5.0)
+    {
+        cout << "Tempo Acumulado: " << TempoTotal << " segundos. ";
+        cout << "Nros de Frames sem desenho: " << nFrames << endl;
+        cout << "FPS(sem desenho): " << nFrames / TempoTotal << endl;
+        TempoTotal = 0;
+        nFrames = 0;
     }
 }
 
@@ -445,12 +477,12 @@ void drawLabirinto()
         for (int j = 0; j < colunas; ++j)
         {
             glPushMatrix();
-            glTranslatef(CantoEsquerdo.x + j, CantoEsquerdo.y + 1.85, CantoEsquerdo.z + i);
+            glTranslatef(CantoEsquerdo.x + j, CantoEsquerdo.y + 0.9, CantoEsquerdo.z + i);
             switch (labirinto[i][j])
             {
             case PAREDE1:
                 glEnable(GL_TEXTURE_2D);
-                glBindTexture(GL_TEXTURE_2D, texParede);
+                // glBindTexture(GL_TEXTURE_2D, texParede);
                 glPushMatrix();
                 glScaled(1, WALL_HEIGHT, WALL_THICKNESS);
                 DesenhaCuboComTextura(1, texParede);
@@ -460,12 +492,12 @@ void drawLabirinto()
             case JANELA:
                 // Parte inferior da janela
                 glEnable(GL_TEXTURE_2D);
-                glBindTexture(GL_TEXTURE_2D, texParede);
+                // glBindTexture(GL_TEXTURE_2D, texParede);
                 glPushMatrix();
                 glTranslated(0, -WALL_HEIGHT / 3, 0);         // Translação para a parte inferior
                 glScaled(1, WALL_HEIGHT / 3, WALL_THICKNESS); // Escalamento para 1/3 da altura da parede
                 DesenhaCuboComTextura(1, texParede);
-                // Parte superior
+                //  Parte superior
                 glEnable(GL_TEXTURE_2D);
                 glPopMatrix();
                 glPushMatrix();
@@ -476,7 +508,7 @@ void drawLabirinto()
                 break;
             case PORTA:
                 glEnable(GL_TEXTURE_2D);
-                glBindTexture(GL_TEXTURE_2D, texParede);
+                //  glBindTexture(GL_TEXTURE_2D, texParede);
                 glPushMatrix();
                 glTranslated(0, 1.05, 0);
                 glScaled(1, 0.6, WALL_THICKNESS);
@@ -485,7 +517,7 @@ void drawLabirinto()
                 break;
             case CADEIRA:
                 glPushMatrix();
-                glTranslated(0, -1.25, 0);
+                glTranslated(0, -1.1, 0);
                 glScalef(0.003f, 0.003f, 0.003f);
                 glRotated(rand() % 360, 0, 1, 0);
                 glColor3f(0.8f, 0.6f, 0.4f);
@@ -494,7 +526,7 @@ void drawLabirinto()
                 break;
             case MESA:
                 glPushMatrix();
-                glTranslated(0, -1.25, 0);
+                glTranslated(0, -1.1, 0);
                 glScalef(0.7f, 0.7f, 0.7f);
                 glColor3f(0.8f, 0.6f, 0.4f); // marrom claro
                 mesa.ExibeObjeto();
@@ -612,7 +644,7 @@ void desenhaPersonagem()
     // Aplicar a rotação do personagem em torno do eixo Y
     glRotatef(anguloDoPersonagem, 0.0f, 1.0f, 0.0f);
     glColor3f(1.0f, 1.0f, 1.0f); // Branco
-    glScaled(0.8, 0.8, 0.8);
+    glScaled(0.6, 0.6, 0.6);
     personagem.ExibeObjeto();
     glPopMatrix();
 
@@ -633,11 +665,11 @@ void desenhaInimigo()
         if (isPositionValid(pos.x, pos.z))
         {
             glPushMatrix();
-            glTranslatef(pos.x, 0.4, pos.z);
+            glTranslatef(pos.x, 0.0f, pos.z);
             glRotatef(-90, 1, 0, 0); // Ajusta a posição que vem errada no .tri
             glRotatef(anguloDoInimigo, 0.0f, 0.0f, 1.0f);
             glScaled(0.01, 0.01, 0.01);
-            glColor3f(0.6f, 0.4f, 0.2f);
+            glColor3f(1.0f, 0.1f, 0.1f);
             inimigo.ExibeObjeto();
             glPopMatrix();
         }
@@ -652,12 +684,12 @@ void desenhaCapsulaEnergia()
         {
 
             glPushMatrix();
-            glTranslatef(pos.x, 0.7f, pos.z);
+            glTranslatef(pos.x, 0.0f, pos.z);
             glScalef(0.002f, 0.002f, 0.002f);
-            glRotatef(angulo, 0, 1, 0);  // Para girar em torno de si mesmo
-            glColor3f(0.0f, 0.0f, 0.0f); // cor preta
+            glRotatef(angulo, 0, 1, 0); // Para girar em torno de si mesmo
+            glColor3f(1.0f, 1.0f, 0.0f);
             capsulaEnergia.ExibeObjeto();
-            glBindTexture(GL_TEXTURE_2D, texEnergy);
+            // glBindTexture(GL_TEXTURE_2D, texEnergy);
             glPopMatrix();
         }
     }
@@ -674,7 +706,7 @@ void detectaColisaoCapsula()
             cout << "Personagem atingiu a capsula de energia" << endl;
             // Remover a cápsula da lista
             it = posicoesCapsulasEnergia.erase(it);
-            TOTAL_ENERGIA += 100;
+            TOTAL_ENERGIA += 200;
         }
         else
         {
@@ -683,60 +715,101 @@ void detectaColisaoCapsula()
     }
 }
 
-void moveInimigo()
-{
-    float velocidadeInimigo = 0.2f; // Velocidade de movimento do inimigo
+void moveInimigo() {
+    float velocidadeInimigo = 0.040f; // Velocidade de movimento do inimigo
+    float distanciaPerseguicao = 10.0f; // Distância para começar a perseguição
 
-    for (auto it = posicoesInimigos.begin(); it != posicoesInimigos.end();)
-    {
+    for (auto it = posicoesInimigos.begin(); it != posicoesInimigos.end();) {
         // Calcular vetor direção para o personagem principal
         float dirX = ALVO.x - it->x;
         float dirZ = ALVO.z - it->z;
 
-        // Normalizar o vetor direção (para manter a mesma velocidade independentemente da distância)
-        float length = sqrt(dirX * dirX + dirZ * dirZ);
-        if (length != 0)
-        {
-            dirX /= length;
-            dirZ /= length;
-        }
+        // Verificar se o personagem está perto o suficiente para começar a perseguição
+        float distancia = sqrt(dirX * dirX + dirZ * dirZ);
+        if (distancia < distanciaPerseguicao) {
+            // Normalizar o vetor direção (para manter a mesma velocidade independentemente da distância)
+            if (distancia != 0) {
+                dirX /= distancia;
+                dirZ /= distancia;
+            }
 
-        // Atualizar posição do inimigo em direção ao personagem principal
-        it->x += dirX * velocidadeInimigo;
-        it->z += dirZ * velocidadeInimigo;
+            // Atualizar posição do inimigo em direção ao personagem principal
+            bool colisao;
+            int tentativas = 0;
+            const int maxTentativas = 100;
 
-        // Atualizar ângulo do inimigo
-        anguloDoInimigo = atan2(dirX, dirZ) * 180.0 / PI;
+            do {
+                colisao = false;
+                it->x += dirX * velocidadeInimigo;
+                it->z += dirZ * velocidadeInimigo;
 
-        // Verificar colisão com paredes
-        if (!isPositionValid(it->x, it->z))
-        {
-            it->x -= dirX * velocidadeInimigo;
-            it->z -= dirZ * velocidadeInimigo;
-        }
+                // Atualizar ângulo do inimigo
+                anguloDoInimigo = atan2(dirX, dirZ) * 180.0 / PI;
 
-        // Verificar colisão com o personagem
-        BoundingBox inimigoBox = getBoundingBox(*it, inimigoWidth, inimigoHeight, inimigoDepth);
-        BoundingBox personagemBox = getBoundingBox(ALVO, personagemWidth, personagemHeight, personagemDepth);
+                BoundingBox inimigoBox = getBoundingBox(*it, inimigoWidth, inimigoHeight, inimigoDepth);
 
-        if (detectCollision(inimigoBox, personagemBox))
-        {
-            TOTAL_PONTOS--;
-            cout << "O inimigo colidiu com o personagem! Total de pontos atualizado: " << TOTAL_PONTOS << endl;
+                for (int i = 0; i < linhas; ++i) {
+                    for (int j = 0; j < colunas; ++j) {
+                        if ((labirinto[i][j] == PAREDE1 || labirinto[i][j] == JANELA || labirinto[i][j] == MESA)) {
+                            Ponto objPos = Ponto(CantoEsquerdo.x + j, CantoEsquerdo.y + 1, CantoEsquerdo.z + i);
+                            float objWidth = (labirinto[i][j] == MESA) ? 1.0 : 1.0;
+                            float objHeight = (labirinto[i][j] == MESA) ? 0.5 : WALL_HEIGHT;
+                            float objDepth = (labirinto[i][j] == MESA) ? 1.5 : WALL_THICKNESS;
 
-            // Remover o inimigo da lista
-            it = posicoesInimigos.erase(it);
+                            BoundingBox objBox = getBoundingBox(objPos, objWidth, objHeight, objDepth);
 
-            if (TOTAL_PONTOS == 0)
-            {
-                // DesenharMensagemFinal(false);
-                // glutTimerFunc(3000, encerrarJogo, 0);
+                            if (detectCollision(inimigoBox, objBox)) {
+                                colisao = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (colisao) {
+                        break;
+                    }
+                }
+
+                if (colisao) {
+                    // Voltar à posição anterior
+                    it->x -= dirX * velocidadeInimigo;
+                    it->z -= dirZ * velocidadeInimigo;
+
+                    // Mudar de direção aleatoriamente
+                    dirX = static_cast<float>(rand() % 360 - 180);
+                    dirZ = static_cast<float>(rand() % 360 - 180);
+
+                    // Normalizar o vetor direção
+                    float length = sqrt(dirX * dirX + dirZ * dirZ);
+                    if (length != 0) {
+                        dirX /= length;
+                        dirZ /= length;
+                    }
+
+                    tentativas++;
+                    if (tentativas > maxTentativas) {
+                        break; // Evitar loop infinito
+                    }
+                }
+            } while (colisao);
+
+            BoundingBox personagemBox = getBoundingBox(ALVO, personagemWidth, personagemHeight, personagemDepth);
+            BoundingBox inimigoBox = getBoundingBox(*it, inimigoWidth, inimigoHeight, inimigoDepth);
+
+            if (detectCollision(inimigoBox, personagemBox)) {
+                TOTAL_PONTOS--;
+                cout << "O inimigo colidiu com o personagem! Total de pontos atualizado: " << TOTAL_PONTOS << endl;
+
+                // Remover o inimigo da lista
+                it = posicoesInimigos.erase(it);
+
+                if (TOTAL_PONTOS == 0) {
+                    // DesenharMensagemFinal(false);
+                    // glutTimerFunc(3000, encerrarJogo, 0);
+                }
+                continue; // Evitar incrementar o iterador inválido
             }
         }
-        else
-        {
-            ++it; // Avançar para o próximo inimigo se não houve colisão
-        }
+        ++it; // Incrementar o iterador apenas se não houver remoção
     }
 }
 
@@ -888,8 +961,7 @@ void DesenhaChaoV2()
 {
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, texPiso);
-    // glScaled(1, 1, 1);
-
+    //  glScaled(1, 1, 1);
     glBegin(GL_QUADS);
     glTexCoord2f(0.0f, 0.0f);
     glVertex3f(-0.5f, -0.5f, 0.5f);
@@ -900,7 +972,6 @@ void DesenhaChaoV2()
     glTexCoord2f(0.0f, 1.0f);
     glVertex3f(-0.5f, -0.5f, -0.5f);
     glEnd();
-
     glDisable(GL_TEXTURE_2D);
 }
 
@@ -920,17 +991,18 @@ void DesenhaPiso()
         {
             if (labirinto[z][x] == POS_FINAL_LABIRINTO)
             {
+                glTranslated(0, -1, 0);
                 glColor3f(0.0, 1.0, 0.0); // Verde
                 glPushMatrix();
                 glScaled(1, 1, 1);
                 // glBindTexture(GL_TEXTURE_2D, texPiso);
-                // DesenhaCubo();
                 glutSolidCube(1.0);
                 glPopMatrix();
-                glTranslated(0, 0, 1);
+                glTranslated(0, 1, 1);
             }
             else
             {
+                // glColor3f(0.5f, 0.5f, 0.5f);
                 DesenhaChaoV2();
                 glTranslated(0, 0, 1);
             }
@@ -1032,7 +1104,7 @@ void PosicUser()
     }
     else
     {
-        MygluPerspective(60, AspectRatio, 0.1, 50); // Projeção perspectiva
+        MygluPerspective(60, AspectRatio, 0.1, 200); // Projeção perspectiva
     }
 
     glMatrixMode(GL_MODELVIEW);
@@ -1049,27 +1121,26 @@ void PosicUser()
     }
     else if (ModoDeCamera == 1)
     {
-        // cameraD = cameraDist3; // Distância da câmera para terceira pessoa
         OBS.x = (colunas / 2) - 0.5;
-        OBS.z = (linhas / 2);
-        OBS.y = 48;
+        OBS.z = linhas + 15;
+        OBS.y = 35;
 
         ALVO.x = posAlvoX;
         ALVO.y = posAlvoY;
         ALVO.z = posAlvoZ;
 
-        gluLookAt(OBS.x, OBS.y, OBS.z,  // Posição do Observador
-                  OBS.x, ALVO.y, OBS.z, // Posição do Alvo
-                  0.0, 0.0, -1.0);      // Vetor Up
+        gluLookAt(OBS.x, OBS.y, OBS.z,             // Posição do Observador
+                  colunas / 2, ALVO.y, linhas / 2, // Posição do Alvo
+                  0.0, 0.0, -1.0);                 // Vetor Up
 
-        return; // Retorna pois não há necessidade de seguir com o restante da função
+        return;
     }
     else if (ModoDeCamera == 2)
     {
         // Defina a câmera acima do mapa
         OBS.x = posAlvoX;
-        OBS.z = posAlvoZ;
-        OBS.y = posAlvoY + 25;
+        OBS.z = posAlvoZ + 8;
+        OBS.y = posAlvoY + 15;
 
         ALVO.x = posAlvoX;
         ALVO.y = posAlvoY;
@@ -1079,7 +1150,7 @@ void PosicUser()
                   ALVO.x, ALVO.y, ALVO.z, // Posição do Alvo
                   0.0, 0.0, -1.0);        // Vetor Up
 
-        return; // Retorna pois não há necessidade de seguir com o restante da função
+        return;
     }
 
     // Cálculo da posição e orientação da câmera
@@ -1090,9 +1161,9 @@ void PosicUser()
     ALVO.y = posAlvoY;
     ALVO.z = posAlvoZ;
 
-    gluLookAt(OBS.x, OBS.y + 0.7, OBS.z,    // Posição do Observador
-              ALVO.x, ALVO.y + 0.7, ALVO.z, // Posição do Alvo
-              0.0, 1.0, 0.0);               // Vetor Up
+    gluLookAt(OBS.x, OBS.y, OBS.z,    // Posição do Observador
+              ALVO.x, ALVO.y, ALVO.z, // Posição do Alvo
+              0.0, 1.0, 0.0);         // Vetor Up
 }
 
 void encerrarJogo(int value)
@@ -1284,7 +1355,7 @@ void keyboard(unsigned char key, int x, int y)
         init();
         glutPostRedisplay();
         break;
-    case ' ': // Andar/parar com a tecla espaço
+    case 32: // Andar/parar com a tecla espaço
         emMovimento = !emMovimento;
         break;
     case 'a': // Virar para esquerda
