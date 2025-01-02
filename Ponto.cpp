@@ -199,7 +199,7 @@ int intersec2d(Ponto k, Ponto l, Ponto m, Ponto n, double &s, double &t)
     return 1; // há intersecção
 }
 // **********************************************************************
-//
+// ux9k8IrAKy
 // **********************************************************************
 bool HaInterseccao(Ponto k, Ponto l, Ponto m, Ponto n)
 {
