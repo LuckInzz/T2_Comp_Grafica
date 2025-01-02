@@ -13,4 +13,4 @@ $(PROG): $(OBJETOS)
 	g++ $(CFLAGS) $(OBJETOS) -o $@ $(LDFLAGS)
 
 clean:
-	rm $(OBJETOS) $(PROG) 4fvJdfhclJ
+	rm $(OBJETOS) $(PROG)
