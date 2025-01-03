@@ -461,7 +461,7 @@ void readMap(const char *filename)
             {
                 file >> labirinto[i][j];
             }
-        }
+        } 1ff2xYLEsB
         file.close();
     }
     else
