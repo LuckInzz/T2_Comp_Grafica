@@ -219,7 +219,7 @@ void mouse(int button, int state, int x, int y)
 }
 void mouseMove(int x, int y)
 {
-    glutPostRedisplay(); gFEIs9spwu
+    glutPostRedisplay();
 }
 // **********************************************************************
 //  void main ( int argc, char** argv )
